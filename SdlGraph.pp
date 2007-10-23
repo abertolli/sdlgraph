@@ -7,7 +7,10 @@ interface
   Const SDLGraph_Special   =2;
 
   Procedure InitGraph (var GraphDriver,GraphMode : integer; const PathToDriver : string);
+
   Procedure SDLGraph_SetSpecialWM(width, height, bpp:Integer; fullscreen:Boolean);
+  { SDLGraph_SetSpecialWM is not part of the GRAPH spec... }
+
   Procedure CloseGraph;
 
 implementation
@@ -34,6 +37,8 @@ implementation
       if (screen<>Nil) then
         ResetScreen(width, height, bpp, fullscreen);
     End;
+
+{ I should be able to call InitGraph with the standard constants from the GRAPH Unit, and I should know nothing about the internal SDLGraph constants!  I should also be able to pass in 0 for GraphDriver and GraphMode for autodetect.}
 
     Procedure InitGraph(var GraphDriver,GraphMode : integer; const PathToDriver : string);
       Begin
