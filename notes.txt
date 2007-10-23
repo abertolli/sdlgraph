@@ -1,0 +1,6 @@
+GRAPH Unit Reference:
+http://www.freepascal.org/docs-html/rtl/graph/
+
+Current:
+http://www.freepascal.org/docs-html/rtl/graph/modes.html
+
