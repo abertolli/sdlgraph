@@ -3,8 +3,8 @@ Uses Crt, SdlGraph;
 Var GM,GD:Integer;
 Begin
   GD:=Detect;
-  GM:=1;
+  GM:=sdlgraph_windowed;{Will hang system on non-windowed mode}
   InitGraph(GD, GM, '');
-  Repeat until keypressed;
+  Repeat until keypressed; 
   CloseGraph;
 End.
