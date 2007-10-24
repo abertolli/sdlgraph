@@ -98,7 +98,7 @@ Begin
 
 { Initialization }
 
-   width sdlgraph_env do
+   with sdlgraph_env do
       begin
          colordepth:=0;
          height:=0;
