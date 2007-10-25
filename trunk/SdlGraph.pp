@@ -62,11 +62,14 @@ Const
 
   function GraphErrorMsg(ErrorCode: SmallInt):String;
 
+  procedure DetectGraph(var GraphDriver, GraphMode: Integer);
+
 implementation
   Uses SDL, SDL_video, SDL_types;
 
   Var screen:PSDL_Surface;
       sdlgraph_graphresult:SmallInt;
+      sdlgraph_flags:Uint32;
 
     function GraphResult: SmallInt;
       Begin
@@ -80,57 +83,98 @@ implementation
           -1: GraphErrorMsg:='Detect has not found proper graphic mode';
           End;
       End;
+    procedure DetectGraph(var GraphDriver, GraphMode: Integer);
+      Var VI:PSDL_VideoInfo;
+          bpp:Integer;
+          ra: PSDL_RectArray;
+      Begin
+        ra:= SDL_ListModes(Nil, sdlgraph_flags);
+        if(ra=Nil) then
+          Begin
+          sdlgraph_graphresult:=-1;
+          Exit;
+          End
+        else
+          Begin
+            with ra[0][0] do
+              Begin
+              if (w=1024) and (h=768) then
+                GraphMode:=m1024x768
+              else if(w=800) and (h=600) then
+                GraphMode:=m800x600
+              else if(w=1280) and (h=1024) then
+                GraphMode:=m1280x1024
+              else if(w=1600) and (h=1200) then
+                GraphMode:=m1600x1200
+              else if(w=2048) and (h=1536) then
+                GraphMode:=m2048x1536
+              else
+                Begin
+                  sdlgraph_graphresult:=-1;
+                  Exit;
+                End;
+              End;
+            VI:=SDL_GetVideoInfo;
+            bpp:=VI[0].vfmt[0].BitsPerPixel;
+            case bpp of
+              16: GraphDriver:=D16bit;
+              24: GraphDriver:=D24bit;
+              32: GraphDriver:=D32bit;
+              End;
+          End;
+      End;
     Procedure InitGraph(var GraphDriver,GraphMode : integer; const PathToDriver : string);
       Var width, height, bpp:Integer;
-	  flags:Uint32;
-	  ra: PSDL_RectArray;
       Begin
-	flags:=SDL_HWSURFACE;
-        SDL_Init(SDL_INIT_VIDEO);
+	SDL_Init(SDL_INIT_VIDEO);
+	sdlgraph_flags:=SDL_HWSURFACE;
+
 
 	if(GraphMode>=sdlgraph_windowed) then
 	  Dec(GraphMode, sdlgraph_windowed)
 	else
-	  flags:= flags or SDL_FULLSCREEN;
+	  sdlgraph_flags:= sdlgraph_flags or SDL_FULLSCREEN;
+
 	if GraphDriver=Detect then
 	  Begin
-  	    ra:= SDL_ListModes(Nil, flags);
-            if(ra=Nil) then
-              Begin
-              sdlgraph_graphresult:=-1;
-              Exit;
-              End
-            else
-              Begin
-              with ra[0][0] do
-                Begin
-                width:=w;
-                height:=h;
-                End;
-              bpp:=0;
-              End;
-	  End
-	else
-	  Begin
-		case GraphDriver of
-		  D16bit: bpp:=16;
-		  D24bit: bpp:=24;
-		  D32bit: bpp:=32;
-		  End;
-		case GraphMode of
-		  m800x600:
-	            Begin
-		      width:=800;
-		      height:=600;
-		    End;
-		  m1024x768:
-	            Begin
-		      width:=1024;
-		      height:=768;
-		    End;
-		  End;
+	    DetectGraph(GraphDriver, GraphMode);
+	    if(sdlgraph_graphresult<>0) then Exit;
 	  End;
-        screen:=SDL_SetVideoMode(width, height, bpp, flags);
+
+        case GraphDriver of
+          D16bit: bpp:=16;
+          D24bit: bpp:=24;
+          D32bit: bpp:=32;
+          End;
+        case GraphMode of
+          m800x600:
+            Begin
+              width:=800;
+              height:=600;
+            End;
+          m1024x768:
+            Begin
+              width:=1024;
+              height:=768;
+            End;
+          m1280x1024:
+            Begin
+              width:=1280;
+              height:=1024;
+            End;
+          m2048x1536:
+            Begin
+              width:=2048;
+              height:=1536;
+            End;
+          m1600x1200:
+            Begin
+              width:=1600;
+              height:=1200;
+            End;
+          End;
+
+        screen:=SDL_SetVideoMode(width, height, bpp, sdlgraph_flags);
         sdlgraph_graphresult:=0;
       End;
 
@@ -140,4 +184,5 @@ implementation
       End;
 Begin
   screen:=Nil;
+  sdlgraph_flags:=SDL_HWSURFACE;
 End.
