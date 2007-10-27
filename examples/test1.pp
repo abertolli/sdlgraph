@@ -2,9 +2,10 @@ Uses SdlGraph_Crt, SdlGraph;
 
 Var GM,GD:Integer;
 Begin
-  GD:=Detect;
-  GM:=sdlgraph_windowed;{Will hang system on non-windowed mode}
+  GD:=D32bit;
+  GM:=m1024x768;
+  SDLgraph_SetWindowed(true);
   InitGraph(GD, GM, '');
-  Repeat until keypressed;
+  {Repeat until keypressed;}
   CloseGraph;
 End.

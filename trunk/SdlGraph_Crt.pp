@@ -8,14 +8,14 @@ interface
 
 implementation
 
-  Uses Sdl_Events, SDL_Keyboard, cthreads;
+  Uses SDL, Sdl_Events, SDL_Keyboard, cthreads;
 
   Var buffer: Array[0..255] of Char;
-      point: Integer;
+      point: ShortInt;
 
   function EventFilter(event:pSDL_Event):longint;cdecl;
     Begin
-      case event[0].eventtype of
+      case event^.eventtype of
         SDL_KEYUP:
           EventFilter:=1;
         else
@@ -34,6 +34,7 @@ implementation
 
   function KeyPressed: Boolean;
     Begin
+      Writeln('Keypressed called. point is ', point);
       if(point=0) then
         KeyPressed:=false
       else
@@ -45,26 +46,34 @@ implementation
     Var event:SDL_Event;
         key:SDLKey;
     Begin
-    while true do
-      Begin
-        SDL_WaitEvent(@event);
-        if(point<256) then
+      Writeln('Begin of EventProc');
+      while true do
+        if((SDL_WasInit(SDL_INIT_VIDEO) and SDL_INIT_VIDEO)<>0) then
           Begin
-            key:=event.key.keysym.sym;
-            if(key>=256) then
+            SDL_WaitEvent(@event);
+            if(event.eventtype=SDL_KEYUP) then
               Begin
-                buffer[point]   := Char(key and $FF);
-                buffer[point+1] := #0;
-                Inc(point, 2);
+                if(point<256) then
+                  Begin
+                    key:=event.key.keysym.sym;
+                    Writeln('EventProc: Got key press: symcode=', key);
+                    if(key>=256) then
+                      Begin
+                        buffer[point]   := Char(key and $FF);
+                        buffer[point+1] := #0;
+                        Inc(point, 2);
+                      End
+                    else
+                      Begin
+                        buffer[point] := Char(key);
+                        Inc(point);
+                      End;
+                  End;
               End
-            else
-              Begin
-                buffer[point] := Char(key);
-                Inc(point);
-              End;
+            else if(event.eventtype<>0) then
+              Writeln('EventProc: Other event caught: ', event.eventtype);
           End;
-      End;
-    EventProc:=0;
+      EventProc:=0;
     End;
   Var thid: TThreadID;
 Begin

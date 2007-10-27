@@ -43,11 +43,7 @@ Const
    m1280x1024 = 30013;
    m1600x1200 = 30014;
    m2048x1536 = 30015;
-   sdlgraph_windowed
-             = 100000; {This constant can be used to point, that we want to use windowed graph mode, instead of fullscreen.
-			Usage: when setting video mode variable, you should add it to mode constant. (like blink colors made in TP Graph)
-			Example: GM:=m800x600+sdlgraph_windowed;
-			Do you like an idea?}
+
 
    lowNewMode = 30001;
    highNewMode = 30015;
@@ -63,6 +59,8 @@ Const
   function GraphErrorMsg(ErrorCode: SmallInt):String;
 
   procedure DetectGraph(var GraphDriver, GraphMode: Integer);
+
+  procedure SDLgraph_SetWindowed(b:Boolean);
 
 implementation
   Uses SDL, SDL_video, SDL_types;
@@ -88,7 +86,9 @@ implementation
           bpp:Integer;
           ra: PSDL_RectArray;
       Begin
+        Writeln('Begin of DetectGraph');
         ra:= SDL_ListModes(Nil, sdlgraph_flags);
+        Writeln('DetectGraph: SDL_ListModes returned: ', Integer(ra));
         if(ra=Nil) then
           Begin
           sdlgraph_graphresult:=-1;
@@ -96,44 +96,50 @@ implementation
           End
         else
           Begin
-            with ra[0][0] do
-              Begin
-              if (w=1024) and (h=768) then
-                GraphMode:=m1024x768
-              else if(w=800) and (h=600) then
-                GraphMode:=m800x600
-              else if(w=1280) and (h=1024) then
-                GraphMode:=m1280x1024
-              else if(w=1600) and (h=1200) then
-                GraphMode:=m1600x1200
-              else if(w=2048) and (h=1536) then
-                GraphMode:=m2048x1536
+              if(Integer(ra)<>-1) then
+                with ra^[0] do
+                  Begin
+                  if (x=1024) and (y=768) then
+                    GraphMode:=m1024x768
+                  else if(x=800) and (y=600) then
+                    GraphMode:=m800x600
+                  else if(x=1280) and (y=1024) then
+                    GraphMode:=m1280x1024
+                  else if(x=1600) and (y=1200) then
+                    GraphMode:=m1600x1200
+                  else if(x=2048) and (y=1536) then
+                    GraphMode:=m2048x1536
+                  else
+                    Begin
+                      Writeln('DetectGraph: This mode is unknown: ', w, 'x', h);
+                      sdlgraph_graphresult:=-1;
+                      Exit;
+                    End;
+                  End
               else
-                Begin
-                  sdlgraph_graphresult:=-1;
-                  Exit;
-                End;
-              End;
+                GraphMode:=m2048x1536;
             VI:=SDL_GetVideoInfo;
             bpp:=VI^.vfmt^.BitsPerPixel;
             case bpp of
               16: GraphDriver:=D16bit;
               24: GraphDriver:=D24bit;
               32: GraphDriver:=D32bit;
+              else
+                Begin
+                  Writeln('DetectGraph: This bpp is unknown: ', bpp);
+                  sdlgraph_graphresult:=-1;
+                  Exit;
+                End;
               End;
           End;
+
+        Writeln('End of DetectGraph');
       End;
     Procedure InitGraph(var GraphDriver,GraphMode : integer; const PathToDriver : string);
       Var width, height, bpp:Integer;
       Begin
+        Writeln('Begin of InitGraph');
 	SDL_Init(SDL_INIT_VIDEO);
-	sdlgraph_flags:=SDL_HWSURFACE;
-
-
-	if(GraphMode>=sdlgraph_windowed) then
-	  Dec(GraphMode, sdlgraph_windowed)
-	else
-	  sdlgraph_flags:= sdlgraph_flags or SDL_FULLSCREEN;
 
 	if GraphDriver=Detect then
 	  Begin
@@ -174,13 +180,23 @@ implementation
             End;
           End;
 
+        Writeln('InitGraph: will now initialize with: ', width, 'x', height, ', ', bpp);
         screen:=SDL_SetVideoMode(width, height, bpp, sdlgraph_flags);
         sdlgraph_graphresult:=0;
+        Writeln('End of InitGraph');
       End;
 
     Procedure CloseGraph;
       Begin
         SDL_Quit;
+      End;
+
+    procedure SDLgraph_SetWindowed(b:Boolean);
+      Begin
+        if b then
+          sdlgraph_flags:= sdlgraph_flags and (not SDL_FULLSCREEN)
+        else
+          sdlgraph_flags:= sdlgraph_flags or SDL_FULLSCREEN;
       End;
 Begin
   screen:=Nil;
