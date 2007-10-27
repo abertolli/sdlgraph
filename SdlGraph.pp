@@ -115,7 +115,7 @@ implementation
                 End;
               End;
             VI:=SDL_GetVideoInfo;
-            bpp:=VI[0].vfmt[0].BitsPerPixel;
+            bpp:=VI^.vfmt^.BitsPerPixel;
             case bpp of
               16: GraphDriver:=D16bit;
               24: GraphDriver:=D24bit;
@@ -185,4 +185,5 @@ implementation
 Begin
   screen:=Nil;
   sdlgraph_flags:=SDL_HWSURFACE;
+  Writeln('SdlGraph initialized successful');
 End.
