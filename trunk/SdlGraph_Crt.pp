@@ -72,4 +72,5 @@ Begin
   //EventProc_exit:=false;
   point:=0;
   thid:= BeginThread(@EventProc);
+  Writeln('SdlGraph_Crt initialized successful');
 End.
