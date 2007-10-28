@@ -6,6 +6,6 @@ Begin
   GM:=m1024x768;
   SDLgraph_SetWindowed(true);
   InitGraph(GD, GM, '');
-  {Repeat until keypressed;}
+  Repeat until keypressed;
   CloseGraph;
 End.
