@@ -13,6 +13,27 @@ implementation
   Var buffer: Array[0..255] of Char;
       point: ShortInt;
 
+  procedure ProcEvent(event:PSDL_Event);
+    Var key:SDLKey;
+    Begin
+      if(point < 256) and (event^.eventtype=SDL_KEYUP) then
+        Begin
+          key:=event^.key.keysym.sym;
+          Writeln('ProcEvent: Got key press: symcode=', key);
+          if(key>=256) then
+            Begin
+              buffer[point]   := Char(key and $FF);
+              buffer[point+1] := #0;
+              Inc(point, 2);
+            End
+          else
+            Begin
+              buffer[point] := Char(key);
+              Inc(point);
+            End;
+        End;
+    End;
+
   function EventFilter(event:pSDL_Event):longint;cdecl;
     Begin
       case event^.eventtype of
@@ -24,16 +45,22 @@ implementation
     End;
 
   function ReadKey: Char;
-    Var c:Char;
+    Var event: SDL_Event;
     Begin
-      Repeat until point=0;
-      c:=buffer[point-1];
+      while point=0 do
+        Begin
+          SDL_WaitEvent(@event);
+          ProcEvent(@event);
+        End;
       Dec(point);
-      Readkey:=c;
+      Readkey:=buffer[point];
     End;
 
   function KeyPressed: Boolean;
+    Var event:SDL_Event;
     Begin
+      while(SDL_PollEvent(@event)<>0) do
+        ProcEvent(@event);
       Writeln('Keypressed called. point is ', point);
       if(point=0) then
         KeyPressed:=false
@@ -41,45 +68,9 @@ implementation
         KeyPressed:=true;
     End;
 
-//  Var EventProc_exit:Boolean;
-  function EventProc( parameter: pointer):PtrInt;
-    Var event:SDL_Event;
-        key:SDLKey;
-    Begin
-      Writeln('Begin of EventProc');
-      while true do
-        if((SDL_WasInit(SDL_INIT_VIDEO) and SDL_INIT_VIDEO)<>0) then
-          Begin
-            SDL_WaitEvent(@event);
-            if(event.eventtype=SDL_KEYUP) then
-              Begin
-                if(point<256) then
-                  Begin
-                    key:=event.key.keysym.sym;
-                    Writeln('EventProc: Got key press: symcode=', key);
-                    if(key>=256) then
-                      Begin
-                        buffer[point]   := Char(key and $FF);
-                        buffer[point+1] := #0;
-                        Inc(point, 2);
-                      End
-                    else
-                      Begin
-                        buffer[point] := Char(key);
-                        Inc(point);
-                      End;
-                  End;
-              End
-            else if(event.eventtype<>0) then
-              Writeln('EventProc: Other event caught: ', event.eventtype);
-          End;
-      EventProc:=0;
-    End;
-  Var thid: TThreadID;
 Begin
   SDL_SetEventFilter(@EventFilter);
   //EventProc_exit:=false;
   point:=0;
-  thid:= BeginThread(@EventProc);
   Writeln('SdlGraph_Crt initialized successful');
 End.

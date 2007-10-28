@@ -1,7 +1,7 @@
 Unit SDLGraph;
 
 interface
-
+Uses SDL_types;
 { Public things and function prototypes }
 
 Const
@@ -48,7 +48,8 @@ Const
    lowNewMode = 30001;
    highNewMode = 30015;
 
-
+Type
+  SDLgraph_color = Uint32;
 
   Procedure InitGraph (var GraphDriver,GraphMode : integer; const PathToDriver : string);
 
@@ -62,12 +63,39 @@ Const
 
   procedure SDLgraph_SetWindowed(b:Boolean);
 
+  function GetMaxX:Integer;
+  function GetMaxY:Integer;
+
+  procedure SetColor(color:SDLgraph_color);
+
+  procedure PutPixel(X,Y: Integer; color: SDLgraph_color);
+
 implementation
-  Uses SDL, SDL_video, SDL_types;
+  Uses SDL, SDL_video;
 
   Var screen:PSDL_Surface;
       sdlgraph_graphresult:SmallInt;
       sdlgraph_flags:Uint32;
+      sdlgraph_curcolor:SDLgraph_color;
+
+    procedure PutPixel(X,Y: Integer; color: SDLgraph_color);
+      Begin
+
+      End;
+
+    procedure SetColor(color:SDLgraph_color);
+      Begin
+        sdlgraph_curcolor:=color;
+      End;
+
+    function GetMaxX:Integer;
+      Begin
+        GetMaxX:=screen^.w;
+      End;
+    function GetMaxY:Integer;
+      Begin
+        GetMaxY:=screen^.h;
+      End;
 
     function GraphResult: SmallInt;
       Begin
