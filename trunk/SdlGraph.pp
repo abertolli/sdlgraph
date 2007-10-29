@@ -78,9 +78,38 @@ implementation
       sdlgraph_flags:Uint32;
       sdlgraph_curcolor:SDLgraph_color;
 
-    procedure PutPixel(X,Y: Integer; color: SDLgraph_color);
-      Begin
+  Type
+    PUint8  = ^Uint8;
+    PUint16 = ^Uint16;
+    PUint32 = ^Uint32;
 
+    procedure PutPixel_NoLock(X,Y: Integer; color: SDLgraph_color);
+      Var p:PUint8;
+          bpp:Uint8;
+      Begin
+        Writeln('PutPixel_NoLock started');
+        bpp:=screen^.format^.BytesPerPixel;
+        Writeln('bpp: ', bpp);
+        p:= PUint8(screen^.pixels) + Y * screen^.pitch + X * bpp;
+        Case bpp of
+          2: PUint16(p)^:=color;
+          4: PUint32(p)^:=color;
+          else
+            Writeln('PutPixel_NoLock: Unknown bpp: ', bpp);
+          End;
+        Writeln('PutPixel_NoLock ended');
+      End;
+
+    procedure PutPixel(X,Y: Integer; color: SDLgraph_color);
+      Var b:Boolean;
+      Begin
+        b:=SDL_MUSTLOCK(screen);
+        Writeln('Surface must be locked? ', b);
+        if b then
+          SDL_LockSurface(screen);
+        PutPixel_NoLock(X,Y, color);
+        if b then
+          SDL_UnlockSurface(screen);
       End;
 
     procedure SetColor(color:SDLgraph_color);

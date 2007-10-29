@@ -6,12 +6,19 @@ interface
 
   function KeyPressed: Boolean;
 
+  procedure Delay(MS: DWord);
+
 implementation
 
-  Uses SDL, Sdl_Events, SDL_Keyboard, cthreads;
+  Uses SDL, Sdl_Events, SDL_Keyboard, SDL_timer, cthreads;
 
   Var buffer: Array[0..255] of Char;
       point: ShortInt;
+
+  procedure Delay(MS: DWord);
+    Begin
+      SDL_Delay(MS);
+    End;
 
   procedure ProcEvent(event:PSDL_Event);
     Var key:SDLKey;
