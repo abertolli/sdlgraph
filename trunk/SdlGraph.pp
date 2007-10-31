@@ -67,8 +67,28 @@ Type
   function GetMaxY:Integer;
 
   procedure SetColor(color:SDLgraph_color);
+  function GetColor: SDLgraph_color;
+
+  function SDLgraph_MakeColor(r,g,b:Byte):SDLgraph_color;
+
+  function Black:SDLgraph_color;
+  function Blue:SDLgraph_color;
+  function Green:SDLgraph_color;
+  function Cyan:SDLgraph_color;
+  function Red:SDLgraph_color;
+  function Magenta:SDLgraph_color;
+  function Brown:SDLgraph_color;
+  function LightGray:SDLgraph_color;
 
   procedure PutPixel(X,Y: Integer; color: SDLgraph_color);
+
+  procedure Line(X1,Y1, X2, Y2:Integer);
+
+  function ImageSize(X1,Y1, X2,Y2:Integer):Integer;
+
+  {procedure GetImage(X1, Y1, X2, Y2:Integer; Var Bitmap);}
+
+  procedure ClearDevice;
 
 implementation
   Uses SDL, SDL_video;
@@ -76,18 +96,48 @@ implementation
   Var screen:PSDL_Surface;
       sdlgraph_graphresult:SmallInt;
       sdlgraph_flags:Uint32;
-      sdlgraph_curcolor:SDLgraph_color;
+      sdlgraph_curcolor,
+       sdlgraph_bgcolor:SDLgraph_color;
+      EgaColors:Array[0..15] of SDLgraph_color;
+      must_be_locked:Boolean;
 
   Type
     PUint8  = ^Uint8;
     PUint16 = ^Uint16;
     PUint32 = ^Uint32;
 
+    function ImageSize(X1,Y1, X2,Y2:Integer):Integer;
+      Begin
+        ImageSize:= Abs((Y2-Y1)*(X2-X1)*(screen^.format^.BytesPerPixel));
+      End;
+
+    procedure ClearDevice;
+      Begin
+        SDL_FillRect(screen, Nil, SDLgraph_bgcolor);
+      End;
+
+    procedure BeginDraw;
+      Begin
+        must_be_locked:=SDL_MUSTLOCK(screen);
+        if must_be_locked then
+          SDL_LockSurface(screen);
+      End;
+
+    procedure EndDraw;
+      Begin
+        if must_be_locked then
+          SDL_UnlockSurface(screen);
+        SDL_Flip(screen);
+      End;
+
+
     procedure PutPixel_NoLock(X,Y: Integer; color: SDLgraph_color);
       Var p:PUint8;
           bpp:Uint8;
       Begin
         Writeln('PutPixel_NoLock started');
+        Writeln('PutPixel_NoLock: screen pointer: ', Int64(screen));
+        Writeln('PutPixel_NoLock: format pointer: ', Int64(screen^.format));
         bpp:=screen^.format^.BytesPerPixel;
         Writeln('bpp: ', bpp);
         p:= PUint8(screen^.pixels) + Y * screen^.pitch + X * bpp;
@@ -101,20 +151,107 @@ implementation
       End;
 
     procedure PutPixel(X,Y: Integer; color: SDLgraph_color);
-      Var b:Boolean;
       Begin
-        b:=SDL_MUSTLOCK(screen);
-        Writeln('Surface must be locked? ', b);
-        if b then
-          SDL_LockSurface(screen);
+        BeginDraw;
         PutPixel_NoLock(X,Y, color);
-        if b then
-          SDL_UnlockSurface(screen);
+        EndDraw;
+      End;
+
+    procedure Swap(Var a,b:Integer);
+      Begin
+        a:= a + b;
+        b:= a - b;
+        a:= a - b;
+      End;
+
+    procedure Line(X1,Y1, X2, Y2:Integer);
+      Var X:Integer;
+      Begin
+        BeginDraw;
+        if(X1=X2) then
+          Begin
+            if(Y1>=Y2) then
+              Swap(Y1, Y2);
+            for X:=Y2 downto Y1 do
+              PutPixel_NoLock(X2, X, SDLgraph_curcolor);
+          End
+        else if(Y1=Y2) then
+          Begin
+            if(X1>=X2) then
+              Swap(X1, X2);
+            for X:=X2 downto X1 do
+              PutPixel_NoLock(X, Y2, SDLgraph_curcolor);
+          End
+        else if(Abs(X2-X1)>Abs(Y2-Y1)) then
+          Begin
+            if(X1>X2) then
+              Begin
+                Swap(X1,X2);
+                Swap(Y1,Y2);
+              End;
+            for X:=X2 downto X1 do
+              PutPixel_NoLock(X, Y1+Round((X-X1)*(Y2-Y1)/(X2-X1)), SDLgraph_curcolor);
+          End
+        else
+          Begin
+            if(Y1>Y2) then
+              Begin
+                Swap(X1,X2);
+                Swap(Y1,Y2);
+              End;
+            for X:=Y2 downto Y1 do
+              PutPixel_NoLock(X1+Round((X-Y1)*(X2-X1)/(Y2-Y1)), X, SDLgraph_curcolor);
+          End;
+        EndDraw;
       End;
 
     procedure SetColor(color:SDLgraph_color);
       Begin
         sdlgraph_curcolor:=color;
+      End;
+
+    function GetColor: SDLgraph_color;
+      Begin
+        GetColor:=sdlgraph_curcolor;
+      End;
+
+    function SDLgraph_MakeColor(r,g,b:Byte):SDLgraph_color;
+      Begin
+        SDLgraph_MakeColor:= SDL_MapRGB(screen^.format, r, g, b);
+        Writeln('SDLgraph_MakeColor: done');
+      End;
+
+    function Black:SDLgraph_color;
+      Begin
+        Black:=EgaColors[0];
+      End;
+    function Blue:SDLgraph_color;
+      Begin
+        Blue:=EgaColors[6];
+      End;
+    function Green:SDLgraph_color;
+      Begin
+        Green:=EgaColors[4];
+      End;
+    function Cyan:SDLgraph_color;
+      Begin
+        Cyan:=EgaColors[5];
+      End;
+    function Red:SDLgraph_color;
+      Begin
+        Red:=EgaColors[2];
+      End;
+    function Magenta:SDLgraph_color;
+      Begin
+        Magenta:=EgaColors[7];
+      End;
+    function Brown:SDLgraph_color;
+      Begin
+        Brown:=EgaColors[3];
+      End;
+    function LightGray:SDLgraph_color;
+      Begin
+        LightGray:=EgaColors[1];
       End;
 
     function GetMaxX:Integer;
@@ -240,6 +377,24 @@ implementation
         Writeln('InitGraph: will now initialize with: ', width, 'x', height, ', ', bpp);
         screen:=SDL_SetVideoMode(width, height, bpp, sdlgraph_flags);
         sdlgraph_graphresult:=0;
+        Writeln('Now will generate standart ega colors');
+        EgaColors[0]:=SDLgraph_MakeColor(0,0,0);
+        EgaColors[1]:=SDLgraph_MakeColor(128,128,128);
+        EgaColors[2]:=SDLgraph_MakeColor(128,0,0);
+        EgaColors[3]:=SDLgraph_MakeColor(128,128,0);
+        EgaColors[4]:=SDLgraph_MakeColor(0,128,0);
+        EgaColors[5]:=SDLgraph_MakeColor(0,128,128);
+        EgaColors[6]:=SDLgraph_MakeColor(0,0,128);
+        EgaColors[7]:=SDLgraph_MakeColor(128,0,128);
+        EgaColors[8]:=SDLgraph_MakeColor(255,255,255);
+        EgaColors[9]:=SDLgraph_MakeColor(192,192,192);
+        EgaColors[10]:=SDLgraph_MakeColor(255,0,0);
+        EgaColors[11]:=SDLgraph_MakeColor(255,255,0);
+        EgaColors[12]:=SDLgraph_MakeColor(0,255,0);
+        EgaColors[13]:=SDLgraph_MakeColor(0,255,255);
+        EgaColors[14]:=SDLgraph_MakeColor(0,0,255);
+        EgaColors[15]:=SDLgraph_MakeColor(255,0,255);
+        Writeln('End of ega colors generating');
         Writeln('End of InitGraph');
       End;
 
@@ -255,8 +410,11 @@ implementation
         else
           sdlgraph_flags:= sdlgraph_flags or SDL_FULLSCREEN;
       End;
+
+
 Begin
   screen:=Nil;
-  sdlgraph_flags:=SDL_HWSURFACE;
+  sdlgraph_flags:=SDL_HWSURFACE or SDL_FULLSCREEN;
   Writeln('SdlGraph initialized successful');
+  sdlgraph_bgcolor:=Black;
 End.
