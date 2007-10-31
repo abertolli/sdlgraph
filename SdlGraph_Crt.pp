@@ -38,6 +38,7 @@ implementation
               buffer[point] := Char(key);
               Inc(point);
             End;
+          Writeln('ProcEvent: done');
         End;
     End;
 
@@ -66,8 +67,8 @@ implementation
   function KeyPressed: Boolean;
     Var event:SDL_Event;
     Begin
-      while(SDL_PollEvent(@event)<>0) do
-        ProcEvent(@event);
+      while(SDL_PollEvent(@event)=1) do
+          ProcEvent(@event);
       Writeln('Keypressed called. point is ', point);
       if(point=0) then
         KeyPressed:=false
