@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 rm -r build
 mkdir build
 for i in ./trunk/SdlGraph*.pp; do

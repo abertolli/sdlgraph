@@ -4,9 +4,9 @@ Var GM,GD:Integer;
     W,H:Integer;
 Begin
   randomize;
-  GD:=D32bit;
-  GM:=m1024x768;
-  SDLgraph_SetWindowed(true);
+  GD:=Detect;
+  {GM:=m1024x768;}
+  {SDLgraph_SetWindowed(true);}
   InitGraph(GD, GM, '');
   W:=GetMaxX;
   H:=GetMaxY;

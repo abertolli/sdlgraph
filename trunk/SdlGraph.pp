@@ -48,6 +48,9 @@ Const
    lowNewMode = 30001;
    highNewMode = 30015;
 
+{PutImage constants: not used}
+   NormalPut=0;
+   XORPut   =0;
 Type
   SDLgraph_color = Uint32;
 
@@ -79,14 +82,19 @@ Type
   function Magenta:SDLgraph_color;
   function Brown:SDLgraph_color;
   function LightGray:SDLgraph_color;
+  function White:SDLgraph_color;
 
   procedure PutPixel(X,Y: Integer; color: SDLgraph_color);
+
+  function GetPixel(X, Y:Integer):SDLgraph_color;
 
   procedure Line(X1,Y1, X2, Y2:Integer);
 
   function ImageSize(X1,Y1, X2,Y2:Integer):Integer;
 
-  {procedure GetImage(X1, Y1, X2, Y2:Integer; Var Bitmap);}
+  procedure GetImage(X1, Y1, X2, Y2:Integer; Var Bitmap);
+
+  procedure PutImage(X0,Y0:Integer; Var Bitmap; BitBlit:Word);
 
   procedure ClearDevice;
 
@@ -105,15 +113,27 @@ implementation
     PUint8  = ^Uint8;
     PUint16 = ^Uint16;
     PUint32 = ^Uint32;
+    PByte   = ^Byte;
 
-    function ImageSize(X1,Y1, X2,Y2:Integer):Integer;
+    procedure Swap(Var a,b:Integer);
       Begin
-        ImageSize:= Abs((Y2-Y1)*(X2-X1)*(screen^.format^.BytesPerPixel));
+        a:= a + b;
+        b:= a - b;
+        a:= a - b;
       End;
 
-    procedure ClearDevice;
+    procedure PutPixel_NoLock(X,Y: Integer; color: SDLgraph_color);
+      Var p:PUint8;
+          bpp:Uint8;
       Begin
-        SDL_FillRect(screen, Nil, SDLgraph_bgcolor);
+        bpp:=screen^.format^.BytesPerPixel;
+        p:= PUint8(screen^.pixels) + Y * screen^.pitch + X * bpp;
+        Case bpp of
+          2: PUint16(p)^:=color;
+          4: PUint32(p)^:=color;
+          else
+            Writeln('PutPixel_NoLock: Unknown bpp: ', bpp);
+          End;
       End;
 
     procedure BeginDraw;
@@ -127,27 +147,117 @@ implementation
       Begin
         if must_be_locked then
           SDL_UnlockSurface(screen);
-        SDL_Flip(screen);
+        while SDL_Flip(screen)<>0 do;
+      End;
+
+    function ImageSize(X1,Y1, X2,Y2:Integer):Integer;
+      Begin
+        ImageSize:= Abs((Y2-Y1)*(X2-X1)*(screen^.format^.BytesPerPixel));
+      End;
+
+    procedure GetImage(X1, Y1, X2, Y2:Integer; Var Bitmap);
+      Var Y, X, D:Integer;
+          bpp:Word;
+          wp:^Word;
+          p:^Byte;
+      Begin
+        if(X1=X2) or (Y1=Y2) then
+          Exit;
+        if(Y1>Y2) then
+          Begin
+            Swap(Y1, Y2);
+            Swap(X1, X2);
+          End;
+        bpp:=screen^.format^.BytesPerPixel;
+        wp := @Bitmap;
+        wp^:= Abs(X2-X1);
+        Inc(wp);
+        wp^:= Y2-Y1;
+        Inc(wp);
+        wp^:=bpp;
+        Inc(wp);
+        p:=PByte(wp);
+        for Y:=Y1 to Y2 do
+          Begin
+            if(X1>X2) then
+              D:=-1
+            else
+              D:=+1;
+            X:=X1;
+            while(X<>X2) do
+              Begin
+                Case bpp of
+                  1:
+                    Begin
+                      PUint8(p)^:=GetPixel(X,Y);
+                      Inc(p, 1);
+                    End;
+                  2:
+                    Begin
+                      PUint16(p)^:=GetPixel(X,Y);
+                      Inc(p,  2);
+                    End;
+                  4:
+                    Begin
+                      PUint32(p)^:=GetPixel(X,Y);
+                      Inc(p, 4);
+                    End;
+                  else
+                    Writeln('GetImage: Unknown bpp ', bpp);
+                  End;
+                Inc(X, D);
+              End;
+          End;
+      End;
+
+    procedure PutImage(X0,Y0:Integer; Var Bitmap; BitBlit:Word);
+      Var x,y, w,h,bpp:Word;
+      wp:^Word;
+      p:^Byte;
+      syp, sxp:^Byte;
+      color:SDLgraph_color;
+      Begin
+        BeginDraw;
+        wp:=@Bitmap;
+        w:= wp^;
+        Inc(wp);
+        h:= wp^;
+        Inc(wp);
+        bpp:=wp^;
+        Inc(wp);
+        p:=PByte(wp);
+        syp:=PByte(screen^.pixels) + Y0*screen^.pitch+X0*screen^.format^.BytesPerPixel;
+        for y:=0 to h-1 do
+            if((y+y0)<screen^.h) then
+              Begin
+                sxp:=syp;
+                for x:=0 to w-1 do
+                    Begin
+                      Case bpp of
+                        1: color:=Puint8(p)^;
+                        2: color:=PUint16(p)^;
+                        4: color:=PUint32(p)^;
+                        else
+                          Writeln('Unknown bpp: ', bpp);
+                        End;
+                      Inc(p, bpp);
+
+                      Case screen^.format^.BytesPerPixel of
+                        1:  Puint8(sxp)^:=color;
+                        2: Puint16(sxp)^:=color;
+                        4: Puint32(sxp)^:=color;
+                        End;
+                      Inc(sxp, screen^.format^.BytesPerPixel);
+                    End;
+                Inc(syp, screen^.pitch);
+              End;
+        EndDraw;
       End;
 
 
-    procedure PutPixel_NoLock(X,Y: Integer; color: SDLgraph_color);
-      Var p:PUint8;
-          bpp:Uint8;
+    procedure ClearDevice;
       Begin
-        Writeln('PutPixel_NoLock started');
-        Writeln('PutPixel_NoLock: screen pointer: ', Int64(screen));
-        Writeln('PutPixel_NoLock: format pointer: ', Int64(screen^.format));
-        bpp:=screen^.format^.BytesPerPixel;
-        Writeln('bpp: ', bpp);
-        p:= PUint8(screen^.pixels) + Y * screen^.pitch + X * bpp;
-        Case bpp of
-          2: PUint16(p)^:=color;
-          4: PUint32(p)^:=color;
-          else
-            Writeln('PutPixel_NoLock: Unknown bpp: ', bpp);
-          End;
-        Writeln('PutPixel_NoLock ended');
+        SDL_FillRect(screen, Nil, SDLgraph_bgcolor);
       End;
 
     procedure PutPixel(X,Y: Integer; color: SDLgraph_color);
@@ -157,11 +267,18 @@ implementation
         EndDraw;
       End;
 
-    procedure Swap(Var a,b:Integer);
+    function GetPixel(X, Y:Integer):SDLgraph_color;
+      Var p:PUint8;
+          bpp:Uint8;
       Begin
-        a:= a + b;
-        b:= a - b;
-        a:= a - b;
+        bpp:=screen^.format^.BytesPerPixel;
+        p:= PUint8(screen^.pixels) + Y * screen^.pitch + X * bpp;
+        Case bpp of
+          2: GetPixel:=PUint16(p)^;
+          4: GetPixel:=PUint32(p)^;
+          else
+            Writeln('GetPixel: Unknown bpp: ', bpp);
+          End;
       End;
 
     procedure Line(X1,Y1, X2, Y2:Integer);
@@ -170,14 +287,14 @@ implementation
         BeginDraw;
         if(X1=X2) then
           Begin
-            if(Y1>=Y2) then
+            if(Y1>Y2) then
               Swap(Y1, Y2);
             for X:=Y2 downto Y1 do
               PutPixel_NoLock(X2, X, SDLgraph_curcolor);
           End
         else if(Y1=Y2) then
           Begin
-            if(X1>=X2) then
+            if(X1>X2) then
               Swap(X1, X2);
             for X:=X2 downto X1 do
               PutPixel_NoLock(X, Y2, SDLgraph_curcolor);
@@ -253,6 +370,10 @@ implementation
       Begin
         LightGray:=EgaColors[1];
       End;
+    function White:SDLgraph_color;
+      Begin
+        White:=EgaColors[8];
+      End;
 
     function GetMaxX:Integer;
       Begin
@@ -282,26 +403,26 @@ implementation
       Begin
         Writeln('Begin of DetectGraph');
         ra:= SDL_ListModes(Nil, sdlgraph_flags);
-        Writeln('DetectGraph: SDL_ListModes returned: ', Integer(ra));
+        Writeln('DetectGraph: SDL_ListModes returned: ', Int64(ra));
         if(ra=Nil) then
           Begin
-          sdlgraph_graphresult:=-1;
-          Exit;
+            sdlgraph_graphresult:=-1;
+            Exit;
           End
         else
           Begin
-              if(Integer(ra)<>-1) then
+              if(Int64(ra)<>-1) then
                 with ra^[0] do
                   Begin
-                  if (x=1024) and (y=768) then
+                  if (w=1024) and (h=768) then
                     GraphMode:=m1024x768
-                  else if(x=800) and (y=600) then
+                  else if(w=800) and (h=600) then
                     GraphMode:=m800x600
-                  else if(x=1280) and (y=1024) then
+                  else if(w=1280) and (h=1024) then
                     GraphMode:=m1280x1024
-                  else if(x=1600) and (y=1200) then
+                  else if(w=1600) and (h=1200) then
                     GraphMode:=m1600x1200
-                  else if(x=2048) and (y=1536) then
+                  else if(w=2048) and (h=1536) then
                     GraphMode:=m2048x1536
                   else
                     Begin
@@ -395,6 +516,8 @@ implementation
         EgaColors[14]:=SDLgraph_MakeColor(0,0,255);
         EgaColors[15]:=SDLgraph_MakeColor(255,0,255);
         Writeln('End of ega colors generating');
+        sdlgraph_bgcolor:=EgaColors[0];
+        sdlgraph_curcolor:=EgaColors[8];
         Writeln('End of InitGraph');
       End;
 
@@ -414,7 +537,6 @@ implementation
 
 Begin
   screen:=Nil;
-  sdlgraph_flags:=SDL_HWSURFACE or SDL_FULLSCREEN;
+  sdlgraph_flags:=SDL_HWSURFACE or SDL_DOUBLEBUF or SDL_FULLSCREEN;
   Writeln('SdlGraph initialized successful');
-  sdlgraph_bgcolor:=Black;
 End.

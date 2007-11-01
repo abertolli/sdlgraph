@@ -69,7 +69,6 @@ implementation
     Begin
       while(SDL_PollEvent(@event)=1) do
           ProcEvent(@event);
-      Writeln('Keypressed called. point is ', point);
       if(point=0) then
         KeyPressed:=false
       else
