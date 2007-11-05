@@ -1,3 +1,5 @@
+Program Test_Snow2;
+
 Uses crt, SdlGraph;
 
 Const Width=5;

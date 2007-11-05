@@ -10,7 +10,12 @@ interface
 
 implementation
 
-  Uses SDL, Sdl_Events, SDL_Keyboard, SDL_timer, cthreads;
+  Uses 
+     SDL, Sdl_Events, SDL_Keyboard, SDL_timer
+  {$IFNDEF WIN32}
+     , cthreads
+  {$ENDIF}
+  ;
 
   Var buffer: Array[0..255] of Char;
       point: ShortInt;
