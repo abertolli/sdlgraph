@@ -11,8 +11,8 @@ Var i,GM, GD, W,H:Integer;
                                 End;
 Begin
 Randomize;
-GD:=D32bit;
-GM:=m1024x768;
+GD:=D4bit;
+GM:=m640x480;
 InitGraph(GD,GM,'E:\BP7\BGI');
 W:=GetMaxX;
 H:=GetMaxY;
