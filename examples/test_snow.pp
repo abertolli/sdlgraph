@@ -11,7 +11,7 @@ Var i,GM, GD, W,H:Integer;
                                 End;
 Begin
 Randomize;
-GD:=D4bit;
+GD:=D32bit;
 GM:=m640x480;
 InitGraph(GD,GM,'E:\BP7\BGI');
 W:=GetMaxX;
@@ -42,9 +42,9 @@ Repeat
    with sneg[i] do
     Begin
     y:=y+v;
-    PutImage(x+D*Round(30*sin(y/30)), y, bmp^, 0);
+    PutImage(x+D*Round(30*sin(y/100)), y, bmp^, 0);
     End;
- {Delay(100);}
+ Delay(10);
  ClearDevice;
 until keypressed;
 CloseGraph;

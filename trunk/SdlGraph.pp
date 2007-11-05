@@ -126,6 +126,8 @@ implementation
       Var p:PUint8;
           bpp:Uint8;
       Begin
+        if(X<0) or (X>=screen^.w) or (Y<0) or (Y>=screen^.h) then
+          Exit;
         bpp:=screen^.format^.BytesPerPixel;
         p:= PUint8(screen^.pixels) + Y * screen^.pitch + X * bpp;
         Case bpp of
@@ -138,16 +140,16 @@ implementation
 
     procedure BeginDraw;
       Begin
-        must_be_locked:=SDL_MUSTLOCK(screen);
+{        must_be_locked:=SDL_MUSTLOCK(screen);
         if must_be_locked then
           SDL_LockSurface(screen);
-      End;
+}      End;
 
     procedure EndDraw;
       Begin
-        if must_be_locked then
+ {       if must_be_locked then
           SDL_UnlockSurface(screen);
-        while SDL_Flip(screen)<>0 do;
+}        while SDL_Flip(screen)<>0 do;
       End;
 
     function ImageSize(X1,Y1, X2,Y2:Integer):Integer;

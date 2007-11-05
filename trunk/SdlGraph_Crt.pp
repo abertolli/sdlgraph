@@ -10,11 +10,13 @@ interface
 
 implementation
 
-  Uses 
+  Uses
      SDL, Sdl_Events, SDL_Keyboard, SDL_timer
-  {$IFNDEF WIN32}
+(*  {$IFNDEF WIN32}
      , cthreads
   {$ENDIF}
+  *)
+  //We don't use threads anymore
   ;
 
   Var buffer: Array[0..255] of Char;

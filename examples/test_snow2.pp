@@ -50,7 +50,7 @@ Repeat
     {PutImage(x+D*Round(30*sin(y/30)), y, bmp^, 0);}
     PutPixel(x,y,white);
     End;
- {Delay(100);}
+ Delay(100);
  ClearDevice;
 until keypressed;
 CloseGraph;
