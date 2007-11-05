@@ -426,6 +426,8 @@ implementation
                     GraphMode:=m1600x1200
                   else if(w=2048) and (h=1536) then
                     GraphMode:=m2048x1536
+				  else if(w=640) and (h=480) then
+					GraphMode:=m640x480
                   else
                     Begin
                       Writeln('DetectGraph: This mode is unknown: ', w, 'x', h);
@@ -470,6 +472,11 @@ implementation
           D32bit: bpp:=32;
           End;
         case GraphMode of
+		  m640x480:
+			Begin
+			  width:=640;
+			  height:=480
+			End;
           m800x600:
             Begin
               width:=800;
