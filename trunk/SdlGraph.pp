@@ -44,31 +44,13 @@ Const
    m1600x1200 = 30014;
    m2048x1536 = 30015;
 
+
    lowNewMode = 30001;
    highNewMode = 30015;
-
-{EGA Colors}
-   black = 0;
-   blue = 1;
-   green = 2;
-   cyan = 3;
-   red = 4;
-   magenta = 5;
-   brown = 6;
-   lightgray = 7;
-   darkgray = 8;
-   lightblue = 9;
-   lightgreen = 10;
-   lightcyan = 11;
-   lightred = 12;
-   lightmagenta = 13;
-   yellow = 14;
-   white = 15;
 
 {PutImage constants: not used}
    NormalPut=0;
    XORPut   =0;
-
 Type
   SDLgraph_color = Uint32;
 
@@ -87,10 +69,20 @@ Type
   function GetMaxX:Integer;
   function GetMaxY:Integer;
 
-  procedure SetColor(color:smallint);
+  procedure SetColor(color:SDLgraph_color);
   function GetColor: SDLgraph_color;
 
   function SDLgraph_MakeColor(r,g,b:Byte):SDLgraph_color;
+
+  function Black:SDLgraph_color;
+  function Blue:SDLgraph_color;
+  function Green:SDLgraph_color;
+  function Cyan:SDLgraph_color;
+  function Red:SDLgraph_color;
+  function Magenta:SDLgraph_color;
+  function Brown:SDLgraph_color;
+  function LightGray:SDLgraph_color;
+  function White:SDLgraph_color;
 
   procedure PutPixel(X,Y: Integer; color: SDLgraph_color);
 
@@ -113,8 +105,8 @@ implementation
       sdlgraph_graphresult:SmallInt;
       sdlgraph_flags:Uint32;
       sdlgraph_curcolor,
-      sdlgraph_bgcolor:SDLgraph_color;
-      sdlgraph_graphdriver: integer;
+       sdlgraph_bgcolor:SDLgraph_color;
+      EgaColors:Array[0..15] of SDLgraph_color;
       must_be_locked:Boolean;
 
   Type
@@ -330,6 +322,10 @@ implementation
         EndDraw;
       End;
 
+    procedure SetColor(color:SDLgraph_color);
+      Begin
+        sdlgraph_curcolor:=color;
+      End;
 
     function GetColor: SDLgraph_color;
       Begin
@@ -342,49 +338,41 @@ implementation
         Writeln('SDLgraph_MakeColor: done');
       End;
 
-    function SDLgraph_ColorMap(color:smallint):SDLgraph_color;
-       begin
-          if (sdlgraph_graphdriver = D4bit) then
-             case color of
-                {black}
-                0 : SDLgraph_ColorMap:=SDLgraph_MakeColor(0,0,0);
-                {blue}
-                1 : SDLgraph_ColorMap:=SDLgraph_MakeColor(0,0,128);
-                {green}
-                2 : SDLgraph_ColorMap:=SDLgraph_MakeColor(0,128,0);
-                {cyan}
-                3 : SDLgraph_ColorMap:=SDLgraph_MakeColor(0,128,128);
-                {red}
-                4 : SDLgraph_ColorMap:=SDLgraph_MakeColor(128,0,0);
-                {magenta}
-                5 : SDLgraph_ColorMap:=SDLgraph_MakeColor(128,0,128);
-                {brown}
-                6 : SDLgraph_ColorMap:=SDLgraph_MakeColor(128,128,0);
-                {lightgray}
-                7 : SDLgraph_ColorMap:=SDLgraph_MakeColor(192,192,192);
-                {darkgray}
-                8 : SDLgraph_ColorMap:=SDLgraph_MakeColor(128,128,128);
-                {lightblue}
-                9 : SDLgraph_ColorMap:=SDLgraph_MakeColor(0,0,255);
-               {lightgreen}
-               10 : SDLgraph_ColorMap:=SDLgraph_MakeColor(0,255,0);
-               {lightcyan}
-               11 : SDLgraph_ColorMap:=SDLgraph_MakeColor(0,255,255);
-               {lightred}
-               12 : SDLgraph_ColorMap:=SDLgraph_MakeColor(255,0,0);
-               {lightcyan}
-               13 : SDLgraph_ColorMap:=SDLgraph_MakeColor(255,0,255);
-               {yellow}
-               14 : SDLgraph_ColorMap:=SDLgraph_MakeColor(255,255,0);
-               {white}
-               15 : SDLgraph_ColorMap:=SDLgraph_MakeColor(255,255,255);
-             end; {case}
-
-       end;
-
-    procedure SetColor(color:smallint);
+    function Black:SDLgraph_color;
       Begin
-        sdlgraph_curcolor:=SDLgraph_ColorMap(color);
+        Black:=EgaColors[0];
+      End;
+    function Blue:SDLgraph_color;
+      Begin
+        Blue:=EgaColors[6];
+      End;
+    function Green:SDLgraph_color;
+      Begin
+        Green:=EgaColors[4];
+      End;
+    function Cyan:SDLgraph_color;
+      Begin
+        Cyan:=EgaColors[5];
+      End;
+    function Red:SDLgraph_color;
+      Begin
+        Red:=EgaColors[2];
+      End;
+    function Magenta:SDLgraph_color;
+      Begin
+        Magenta:=EgaColors[7];
+      End;
+    function Brown:SDLgraph_color;
+      Begin
+        Brown:=EgaColors[3];
+      End;
+    function LightGray:SDLgraph_color;
+      Begin
+        LightGray:=EgaColors[1];
+      End;
+    function White:SDLgraph_color;
+      Begin
+        White:=EgaColors[8];
       End;
 
     function GetMaxX:Integer;
@@ -462,14 +450,10 @@ implementation
 
         Writeln('End of DetectGraph');
       End;
-
     Procedure InitGraph(var GraphDriver,GraphMode : integer; const PathToDriver : string);
       Var width, height, bpp:Integer;
       Begin
         Writeln('Begin of InitGraph');
-
-        sdlgraph_graphdriver:=GraphDriver; {so we can remember them later}
-
 	SDL_Init(SDL_INIT_VIDEO);
 
 	if GraphDriver=Detect then
@@ -514,8 +498,26 @@ implementation
         Writeln('InitGraph: will now initialize with: ', width, 'x', height, ', ', bpp);
         screen:=SDL_SetVideoMode(width, height, bpp, sdlgraph_flags);
         sdlgraph_graphresult:=0;
-        sdlgraph_bgcolor:=SDLgraph_MakeColor(0,0,0);
-        sdlgraph_curcolor:=SDLgraph_MakeColor(128,128,128);
+        Writeln('Now will generate standart ega colors');
+        EgaColors[0]:=SDLgraph_MakeColor(0,0,0);
+        EgaColors[1]:=SDLgraph_MakeColor(128,128,128);
+        EgaColors[2]:=SDLgraph_MakeColor(128,0,0);
+        EgaColors[3]:=SDLgraph_MakeColor(128,128,0);
+        EgaColors[4]:=SDLgraph_MakeColor(0,128,0);
+        EgaColors[5]:=SDLgraph_MakeColor(0,128,128);
+        EgaColors[6]:=SDLgraph_MakeColor(0,0,128);
+        EgaColors[7]:=SDLgraph_MakeColor(128,0,128);
+        EgaColors[8]:=SDLgraph_MakeColor(255,255,255);
+        EgaColors[9]:=SDLgraph_MakeColor(192,192,192);
+        EgaColors[10]:=SDLgraph_MakeColor(255,0,0);
+        EgaColors[11]:=SDLgraph_MakeColor(255,255,0);
+        EgaColors[12]:=SDLgraph_MakeColor(0,255,0);
+        EgaColors[13]:=SDLgraph_MakeColor(0,255,255);
+        EgaColors[14]:=SDLgraph_MakeColor(0,0,255);
+        EgaColors[15]:=SDLgraph_MakeColor(255,0,255);
+        Writeln('End of ega colors generating');
+        sdlgraph_bgcolor:=EgaColors[0];
+        sdlgraph_curcolor:=EgaColors[8];
         Writeln('End of InitGraph');
       End;
 
