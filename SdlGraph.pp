@@ -461,7 +461,12 @@ implementation
         Writeln('End of DetectGraph');
       End;
 
-    function DrawThread(p:Pointer):int64;
+    function DrawThread(p:Pointer)
+{$IFDEF CPUX86_64 }
+	:Int64;
+{$ELSE}
+	:LongInt;
+{$ENDIF}
       Begin
         drawing_thread_status:=1;
         while drawing_thread_status<>0 do
@@ -477,13 +482,13 @@ implementation
       Var width, height, bpp:Integer;
       Begin
         Writeln('Begin of InitGraph');
-	SDL_Init(SDL_INIT_VIDEO);
+		SDL_Init(SDL_INIT_VIDEO);
 
-	if GraphDriver=Detect then
-	  Begin
-	    DetectGraph(GraphDriver, GraphMode);
-	    if(sdlgraph_graphresult<>0) then Exit;
-	  End;
+		if GraphDriver=Detect then
+		  Begin
+		    DetectGraph(GraphDriver, GraphMode);
+		    if(sdlgraph_graphresult<>0) then Exit;
+		  End;
 
         case GraphDriver of
           D16bit: bpp:=16;
