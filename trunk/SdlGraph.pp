@@ -1,5 +1,7 @@
 Unit SDLGraph;
 
+{$inline on}
+
 interface
 Uses SDL_types;
 { Public things and function prototypes }
@@ -74,17 +76,17 @@ Type
 
   function SDLgraph_MakeColor(r,g,b:Byte):SDLgraph_color;
 
-  function Black:SDLgraph_color;
-  function Blue:SDLgraph_color;
-  function Green:SDLgraph_color;
-  function Cyan:SDLgraph_color;
-  function Red:SDLgraph_color;
-  function Magenta:SDLgraph_color;
-  function Brown:SDLgraph_color;
-  function LightGray:SDLgraph_color;
-  function White:SDLgraph_color;
+  function Black:SDLgraph_color;inline;
+  function Blue:SDLgraph_color;inline;
+  function Green:SDLgraph_color;inline;
+  function Cyan:SDLgraph_color;inline;
+  function Red:SDLgraph_color;inline;
+  function Magenta:SDLgraph_color;inline;
+  function Brown:SDLgraph_color;inline;
+  function LightGray:SDLgraph_color;inline;
+  function White:SDLgraph_color;inline;
 
-  procedure PutPixel(X,Y: Integer; color: SDLgraph_color);
+  procedure PutPixel(X,Y: Integer; color: SDLgraph_color);inline;
 
   function GetPixel(X, Y:Integer):SDLgraph_color;
 
@@ -96,10 +98,14 @@ Type
 
   procedure PutImage(X0,Y0:Integer; Var Bitmap; BitBlit:Word);
 
-  procedure ClearDevice;
+  procedure ClearDevice;inline;
 
 implementation
-  Uses SDL, SDL_video;
+  Uses SDL, SDL_video, SDL_timer
+    {$IFDEF unix}
+     , cthreads
+    {$ENDIF}
+  ;
 
   Var screen:PSDL_Surface;
       sdlgraph_graphresult:SmallInt;
@@ -108,6 +114,7 @@ implementation
        sdlgraph_bgcolor:SDLgraph_color;
       EgaColors:Array[0..15] of SDLgraph_color;
       must_be_locked:Boolean;
+      drawing_thread_status:Integer;
 
   Type
     PUint8  = ^Uint8;
@@ -122,7 +129,7 @@ implementation
         a:= a - b;
       End;
 
-    procedure PutPixel_NoLock(X,Y: Integer; color: SDLgraph_color);
+    procedure PutPixel_NoLock(X,Y: Integer; color: SDLgraph_color);local;register;
       Var p:PUint8;
           bpp:Uint8;
       Begin
@@ -138,18 +145,18 @@ implementation
           End;
       End;
 
-    procedure BeginDraw;
+    procedure BeginDraw;inline;local;
       Begin
 {        must_be_locked:=SDL_MUSTLOCK(screen);
         if must_be_locked then
           SDL_LockSurface(screen);
 }      End;
 
-    procedure EndDraw;
+    procedure EndDraw;inline;local;
       Begin
  {       if must_be_locked then
           SDL_UnlockSurface(screen);
-}        while SDL_Flip(screen)<>0 do;
+}        SDL_Flip(screen);
       End;
 
     function ImageSize(X1,Y1, X2,Y2:Integer):Integer;
@@ -219,7 +226,6 @@ implementation
       syp, sxp:^Byte;
       color:SDLgraph_color;
       Begin
-        BeginDraw;
         wp:=@Bitmap;
         w:= wp^;
         Inc(wp);
@@ -253,7 +259,6 @@ implementation
                     End;
                 Inc(syp, screen^.pitch);
               End;
-        EndDraw;
       End;
 
 
@@ -263,10 +268,11 @@ implementation
       End;
 
     procedure PutPixel(X,Y: Integer; color: SDLgraph_color);
+      Var dw:Dword;
       Begin
-        BeginDraw;
+//        dw:=SDL_GetTicks;
         PutPixel_NoLock(X,Y, color);
-        EndDraw;
+//        Writeln('PutPixel_NoLock: Time drawing: ', SDL_GetTicks-dw);
       End;
 
     function GetPixel(X, Y:Integer):SDLgraph_color;
@@ -454,6 +460,19 @@ implementation
 
         Writeln('End of DetectGraph');
       End;
+
+    function DrawThread(p:Pointer):int64;
+      Begin
+        drawing_thread_status:=1;
+        while drawing_thread_status<>0 do
+          Begin
+            SDL_Delay(40);{1000/25 - frame every 1/25 of second}
+            SDL_Flip(screen);
+          End;
+        drawing_thread_status:=-1;
+        DrawThread:=0;
+      End;
+
     Procedure InitGraph(var GraphDriver,GraphMode : integer; const PathToDriver : string);
       Var width, height, bpp:Integer;
       Begin
@@ -527,11 +546,14 @@ implementation
         Writeln('End of ega colors generating');
         sdlgraph_bgcolor:=EgaColors[0];
         sdlgraph_curcolor:=EgaColors[8];
+        BeginThread(@DrawThread, Nil);
         Writeln('End of InitGraph');
       End;
 
     Procedure CloseGraph;
       Begin
+        drawing_thread_status:=0;
+        while drawing_thread_status<>-1 do;
         SDL_Quit;
       End;
 
@@ -548,4 +570,5 @@ Begin
   screen:=Nil;
   sdlgraph_flags:=SDL_HWSURFACE or SDL_DOUBLEBUF or SDL_FULLSCREEN;
   Writeln('SdlGraph initialized successful');
+  drawing_thread_status:=0;
 End.

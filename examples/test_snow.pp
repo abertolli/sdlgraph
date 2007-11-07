@@ -1,9 +1,9 @@
 Uses SdlGraph_Crt, SdlGraph;
 
-Const Width=5;
-Const Height=5;
+Const Width=10;
+Const Height=10;
 Const Sneshinok=55; {Count of falling snowflakes}
-Const MaxSpeed=10;
+Const MaxSpeed=5;
 Var i,GM, GD, W,H:Integer;
     bmp:Pointer;
     sneg:Array[1..Sneshinok] of Record

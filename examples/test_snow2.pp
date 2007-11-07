@@ -1,6 +1,6 @@
 Program Test_Snow2;
 
-Uses crt, SdlGraph;
+Uses SdlGraph_Crt, SdlGraph;
 
 Const Width=5;
 Const Height=5;
