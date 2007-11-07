@@ -2,17 +2,32 @@ Uses SdlGraph_Crt, SdlGraph;
 
 Const Width=10;
 Const Height=10;
-Const Sneshinok=55; {Count of falling snowflakes}
-Const MaxSpeed=5;
+Const Sneshinok=30; {Count of falling snowflakes}
+Const MaxSpeed=3;
+
+Type Snowflake =  Record
+                  D,X,Y,V:Integer;
+                  End;
+
 Var i,GM, GD, W,H:Integer;
     bmp:Pointer;
-    sneg:Array[1..Sneshinok] of Record
-                                D,X,Y,V:Integer;
-                                End;
+    sneg:Array[1..Sneshinok] of Snowflake;
+
+procedure ResetSnowflake(Var s:Snowflake);
+  Begin
+   with s do
+    Begin
+      x:=Random(W-Width);
+      y:=0;
+      v:=Random(MaxSpeed)+1;
+      d:=Random(2)-1;
+    End;
+  End;
+
 Begin
 Randomize;
 GD:=D32bit;
-GM:=m640x480;
+GM:=m1024x768;
 InitGraph(GD,GM,'E:\BP7\BGI');
 W:=GetMaxX;
 H:=GetMaxY;
@@ -28,16 +43,14 @@ GetImage(0,0, Width, Height, bmp^);
 
 ClearDevice;
 for i:=1 to Sneshinok do
- sneg[i].y:=H;
+  Begin
+    ResetSnowflake(sneg[i]);
+    sneg[i].y:=Random(H);
+  End;
 Repeat
  for i:=1 to Sneshinok do
   if(sneg[i].y>=H) then
-   Begin
-   sneg[i].x:=Random(W-Width);
-   sneg[i].y:=0;
-   sneg[i].v:=Random(MaxSpeed)+1;
-   sneg[i].d:=Random(2)-1;
-   End
+   ResetSnowflake(sneg[i])
   else
    with sneg[i] do
     Begin
