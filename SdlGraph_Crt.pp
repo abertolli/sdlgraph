@@ -1,10 +1,14 @@
 Unit SdlGraph_Crt;
 
+{$inline on}
+
 interface
 
   function ReadKey: Char;
 
   function KeyPressed: Boolean;
+
+  function GetTicks:Dword;inline;{non-standart function}
 
   procedure Delay(MS: DWord);
 
@@ -82,6 +86,10 @@ implementation
         KeyPressed:=true;
     End;
 
+  function GetTicks:Dword;
+    Begin
+      GetTicks:=SDL_GetTicks;
+    End;
 Begin
   SDL_SetEventFilter(@EventFilter);
   //EventProc_exit:=false;
