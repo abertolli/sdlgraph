@@ -1,8 +1,9 @@
-Unit SDLGraph;
+UNIT SDLGraph;
 
 {$inline on}
 
-interface
+INTERFACE
+
 Uses SDL_types;
 { Public things and function prototypes }
 
@@ -46,13 +47,33 @@ Const
    m1600x1200 = 30014;
    m2048x1536 = 30015;
 
-
    lowNewMode = 30001;
    highNewMode = 30015;
 
 {PutImage constants: not used}
    NormalPut=0;
    XORPut   =0;
+
+
+{Constants for default (EGA) colors}
+   black          = 0;
+   blue           = 1;
+   green          = 2;
+   cyan           = 3;
+   red            = 4;
+   magenta        = 5;
+   brown          = 6;
+   lightgray      = 7;
+   darkgray       = 8;
+   lightblue      = 9;
+   lightgreen     = 10;
+   lightcyan      = 11;
+   lightred       = 12;
+   lightmagenta   = 13;
+   yellow         = 14;
+   white          = 15;
+
+
 Type
   SDLgraph_color = Uint32;
 
@@ -76,16 +97,6 @@ Type
 
   function SDLgraph_MakeColor(r,g,b:Byte):SDLgraph_color;
 
-  function Black:SDLgraph_color;inline;
-  function Blue:SDLgraph_color;inline;
-  function Green:SDLgraph_color;inline;
-  function Cyan:SDLgraph_color;inline;
-  function Red:SDLgraph_color;inline;
-  function Magenta:SDLgraph_color;inline;
-  function Brown:SDLgraph_color;inline;
-  function LightGray:SDLgraph_color;inline;
-  function White:SDLgraph_color;inline;
-
   procedure PutPixel(X,Y: Integer; color: SDLgraph_color);inline;
 
   function GetPixel(X, Y:Integer):SDLgraph_color;
@@ -100,37 +111,44 @@ Type
 
   procedure ClearDevice;inline;
 
-implementation
-  Uses SDL, SDL_video, SDL_timer
-    {$IFDEF unix}
-     , cthreads
-    {$ENDIF}
-  ;
+IMPLEMENTATION
 
-  Var screen:PSDL_Surface;
-      sdlgraph_graphresult:SmallInt;
-      sdlgraph_flags:Uint32;
-      sdlgraph_curcolor,
-       sdlgraph_bgcolor:SDLgraph_color;
-      EgaColors:Array[0..15] of SDLgraph_color;
-      must_be_locked:Boolean;
-      drawing_thread_status:Integer;
+{$IFDEF unix}
+Uses SDL, SDL_video, SDL_timer, cthreads;
+{$ELSE}
+Uses SDL, SDL_video, SDL_timer;
+{$ENDIF}
 
-  Type
-    PUint8  = ^Uint8;
-    PUint16 = ^Uint16;
-    PUint32 = ^Uint32;
-    PByte   = ^Byte;
-    PPSDL_Rect = ^PSDL_Rect;
+Var
+   screen:PSDL_Surface;
+   sdlgraph_graphresult:SmallInt;
+   sdlgraph_flags:Uint32;
+   sdlgraph_curcolor,
+   sdlgraph_bgcolor:SDLgraph_color;
+   
+   EgaColors:Array[0..15] of SDLgraph_color;
+   VgaColors:Array[0..255] of SDLgraph_color;
 
-    procedure Swap(Var a,b:Integer);
-      Begin
-        a:= a + b;
-        b:= a - b;
-        a:= a - b;
-      End;
+   gdriver:integer;
+   must_be_locked:Boolean;
+   drawing_thread_status:Integer;
+   
 
-    procedure PutPixel_NoLock(X,Y: Integer; color: SDLgraph_color);local;register;
+Type
+   PUint8  = ^Uint8;
+   PUint16 = ^Uint16;
+   PUint32 = ^Uint32;
+   PByte   = ^Byte;
+   PPSDL_Rect = ^PSDL_Rect;
+
+Procedure Swap(Var a,b:Integer);
+Begin
+   a:= a + b;
+   b:= a - b;
+   a:= a - b;
+End;
+
+    procedure PutPixel_NoLock(X,Y: Integer; color: SDLgraph_color); {local;}register;
       Var p:PUint8;
           bpp:Uint8;
       Begin
@@ -146,14 +164,14 @@ implementation
           End;
       End;
 
-    procedure BeginDraw;inline;local;
+    procedure BeginDraw;inline;{local;}
       Begin
 {        must_be_locked:=SDL_MUSTLOCK(screen);
         if must_be_locked then
           SDL_LockSurface(screen);
 }      End;
 
-    procedure EndDraw;inline;local;
+    procedure EndDraw;inline;{local;}
       Begin
  {       if must_be_locked then
           SDL_UnlockSurface(screen);
@@ -263,12 +281,12 @@ implementation
       End;
 
 
-    procedure ClearDevice;
+    procedure ClearDevice;inline;
       Begin
         SDL_FillRect(screen, Nil, SDLgraph_bgcolor);
       End;
 
-    procedure PutPixel(X,Y: Integer; color: SDLgraph_color);
+    procedure PutPixel(X,Y: Integer; color: SDLgraph_color);inline;
       Var dw:Dword;
       Begin
         {dw:=SDL_GetTicks;}
@@ -333,7 +351,12 @@ implementation
 
     procedure SetColor(color:SDLgraph_color);
       Begin
-        sdlgraph_curcolor:=color;
+         {Default case:}
+         sdlgraph_curcolor:=EgaColors[color];
+         {we need a big case statement here}
+         case gdriver of
+            D1bit : {maybe a nested procedure} ;
+         end; {case}
       End;
 
     function GetColor: SDLgraph_color;
@@ -345,43 +368,6 @@ implementation
       Begin
         SDLgraph_MakeColor:= SDL_MapRGB(screen^.format, r, g, b);
         Writeln('SDLgraph_MakeColor: done');
-      End;
-
-    function Black:SDLgraph_color;
-      Begin
-        Black:=EgaColors[0];
-      End;
-    function Blue:SDLgraph_color;
-      Begin
-        Blue:=EgaColors[6];
-      End;
-    function Green:SDLgraph_color;
-      Begin
-        Green:=EgaColors[4];
-      End;
-    function Cyan:SDLgraph_color;
-      Begin
-        Cyan:=EgaColors[5];
-      End;
-    function Red:SDLgraph_color;
-      Begin
-        Red:=EgaColors[2];
-      End;
-    function Magenta:SDLgraph_color;
-      Begin
-        Magenta:=EgaColors[7];
-      End;
-    function Brown:SDLgraph_color;
-      Begin
-        Brown:=EgaColors[3];
-      End;
-    function LightGray:SDLgraph_color;
-      Begin
-        LightGray:=EgaColors[1];
-      End;
-    function White:SDLgraph_color;
-      Begin
-        White:=EgaColors[8];
       End;
 
     function GetMaxX:Integer;
@@ -464,9 +450,9 @@ implementation
 
     function DrawThread(p:Pointer)
 {$IFDEF CPUX86_64 }
-	:Int64;
+   :Int64;
 {$ELSE}
-	:LongInt;
+   :LongInt;
 {$ENDIF}
       Begin
         drawing_thread_status:=1;
@@ -483,13 +469,14 @@ implementation
       Var width, height, bpp:Integer;
       Begin
         Writeln('Begin of InitGraph');
-		SDL_Init(SDL_INIT_VIDEO);
+        gdriver:=GraphDriver;
+        SDL_Init(SDL_INIT_VIDEO);
 
-		if GraphDriver=Detect then
-		  Begin
-		    DetectGraph(GraphDriver, GraphMode);
-		    if(sdlgraph_graphresult<>0) then Exit;
-		  End;
+      if GraphDriver=Detect then
+        Begin
+          DetectGraph(GraphDriver, GraphMode);
+          if(sdlgraph_graphresult<>0) then Exit;
+        End;
 
         case GraphDriver of
           D16bit: bpp:=16;
@@ -497,11 +484,11 @@ implementation
           D32bit: bpp:=32;
           End;
         case GraphMode of
-		  m640x480:
-			Begin
-			  width:=640;
-			  height:=480
-			End;
+        m640x480:
+         Begin
+           width:=640;
+           height:=480
+         End;
           m800x600:
             Begin
               width:=800;
@@ -549,22 +536,6 @@ implementation
         EgaColors[13]:=SDLgraph_MakeColor(255,0,255); {lightmagenta}
         EgaColors[14]:=SDLgraph_MakeColor(255,255,0); {yellow}
         EgaColors[15]:=SDLgraph_MakeColor(255,255,255); {white}
-        black=0;
-        blue=1;
-        green=2;
-        cyan=3;
-        red=4;
-        magenta=5;
-        brown=6;
-        lightgray=7;
-        darkgray=8;
-        lightblue=9;
-        lightgreen=10;
-        lightcyan=11;
-        lightred=12;
-        lightmagenta=13;
-        yellow=14;
-        white=15;
 
         Writeln('End of ega colors generating');
         sdlgraph_bgcolor:=EgaColors[0];
@@ -591,8 +562,8 @@ implementation
 
 
 Begin
-  screen:=Nil;
-  sdlgraph_flags:=SDL_HWSURFACE or SDL_DOUBLEBUF or SDL_FULLSCREEN;
-  Writeln('SdlGraph initialized successful');
-  drawing_thread_status:=0;
+   screen:=Nil;
+   sdlgraph_flags:=SDL_HWSURFACE or SDL_DOUBLEBUF or SDL_FULLSCREEN;
+   Writeln('SdlGraph initialized successful');
+   drawing_thread_status:=0;
 End.
