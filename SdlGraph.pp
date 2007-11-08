@@ -13,7 +13,7 @@ Const
 
 { Constants for mode selection }
 
-   Detect=0;
+   Detect = 0;
    D1bit = 11;
    D2bit = 12;
    D4bit = 13;
@@ -271,9 +271,9 @@ implementation
     procedure PutPixel(X,Y: Integer; color: SDLgraph_color);
       Var dw:Dword;
       Begin
-//        dw:=SDL_GetTicks;
+        {dw:=SDL_GetTicks;}
         PutPixel_NoLock(X,Y, color);
-//        Writeln('PutPixel_NoLock: Time drawing: ', SDL_GetTicks-dw);
+        {Writeln('PutPixel_NoLock: Time drawing: ', SDL_GetTicks-dw);}
       End;
 
     function GetPixel(X, Y:Integer):SDLgraph_color;
@@ -472,7 +472,7 @@ implementation
         drawing_thread_status:=1;
         while drawing_thread_status<>0 do
           Begin
-            SDL_Delay(40);{1000/25 - frame every 1/25 of second}
+            SDL_Delay(40);  {1000/25 - frame every 1/25 of second}
             SDL_Flip(screen);
           End;
         drawing_thread_status:=-1;
@@ -533,22 +533,39 @@ implementation
         screen:=SDL_SetVideoMode(width, height, bpp, sdlgraph_flags);
         sdlgraph_graphresult:=0;
         Writeln('Now will generate standart ega colors');
-        EgaColors[0]:=SDLgraph_MakeColor(0,0,0);
-        EgaColors[1]:=SDLgraph_MakeColor(128,128,128);
-        EgaColors[2]:=SDLgraph_MakeColor(128,0,0);
-        EgaColors[3]:=SDLgraph_MakeColor(128,128,0);
-        EgaColors[4]:=SDLgraph_MakeColor(0,128,0);
-        EgaColors[5]:=SDLgraph_MakeColor(0,128,128);
-        EgaColors[6]:=SDLgraph_MakeColor(0,0,128);
-        EgaColors[7]:=SDLgraph_MakeColor(128,0,128);
-        EgaColors[8]:=SDLgraph_MakeColor(255,255,255);
-        EgaColors[9]:=SDLgraph_MakeColor(192,192,192);
-        EgaColors[10]:=SDLgraph_MakeColor(255,0,0);
-        EgaColors[11]:=SDLgraph_MakeColor(255,255,0);
-        EgaColors[12]:=SDLgraph_MakeColor(0,255,0);
-        EgaColors[13]:=SDLgraph_MakeColor(0,255,255);
-        EgaColors[14]:=SDLgraph_MakeColor(0,0,255);
-        EgaColors[15]:=SDLgraph_MakeColor(255,0,255);
+        EgaColors[0]:=SDLgraph_MakeColor(0,0,0); {black}
+        EgaColors[1]:=SDLgraph_MakeColor(0,0,200); {blue}
+        EgaColors[2]:=SDLgraph_MakeColor(0,192,0); {green}
+        EgaColors[3]:=SDLgraph_MakeColor(0,192,192); {cyan}
+        EgaColors[4]:=SDLgraph_MakeColor(200,0,0); {red}
+        EgaColors[5]:=SDLgraph_MakeColor(150,0,150); {magenta}
+        EgaColors[6]:=SDLgraph_MakeColor(192,96,64); {brown}
+        EgaColors[7]:=SDLgraph_MakeColor(192,192,192); {lightgray}
+        EgaColors[8]:=SDLgraph_MakeColor(96,96,96); {darkgray}
+        EgaColors[9]:=SDLgraph_MakeColor(90,90,255); {lightblue}
+        EgaColors[10]:=SDLgraph_MakeColor(0,255,0); {lightgreen}
+        EgaColors[11]:=SDLgraph_MakeColor(0,255,255); {lightcyan}
+        EgaColors[12]:=SDLgraph_MakeColor(255,90,90); {lightred}
+        EgaColors[13]:=SDLgraph_MakeColor(255,0,255); {lightmagenta}
+        EgaColors[14]:=SDLgraph_MakeColor(255,255,0); {yellow}
+        EgaColors[15]:=SDLgraph_MakeColor(255,255,255); {white}
+        black=0;
+        blue=1;
+        green=2;
+        cyan=3;
+        red=4;
+        magenta=5;
+        brown=6;
+        lightgray=7;
+        darkgray=8;
+        lightblue=9;
+        lightgreen=10;
+        lightcyan=11;
+        lightred=12;
+        lightmagenta=13;
+        yellow=14;
+        white=15;
+
         Writeln('End of ega colors generating');
         sdlgraph_bgcolor:=EgaColors[0];
         sdlgraph_curcolor:=EgaColors[8];
