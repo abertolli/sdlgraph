@@ -3,10 +3,9 @@ Uses SdlGraph_Crt, SdlGraph;
 Var GM,GD:Integer;
     W,H:Integer;
 Begin
+  {SDLgraph_SetWindowed(true);}
   randomize;
-  GD:=D32bit;
-  GM:=m1024x768;
-  SDLgraph_SetWindowed(true);
+  GD:=Detect;
   InitGraph(GD, GM, '');
   W:=GetMaxX;
   H:=GetMaxY;

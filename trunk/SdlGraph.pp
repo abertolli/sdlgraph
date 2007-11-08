@@ -121,6 +121,7 @@ implementation
     PUint16 = ^Uint16;
     PUint32 = ^Uint32;
     PByte   = ^Byte;
+    PPSDL_Rect = ^PSDL_Rect;
 
     procedure Swap(Var a,b:Integer);
       Begin
@@ -407,10 +408,10 @@ implementation
     procedure DetectGraph(var GraphDriver, GraphMode: Integer);
       Var VI:PSDL_VideoInfo;
           bpp:Integer;
-          ra: PSDL_RectArray;
+          ra: PPSDL_Rect;
       Begin
         Writeln('Begin of DetectGraph');
-        ra:= SDL_ListModes(Nil, sdlgraph_flags);
+        ra:= PPSDL_Rect(SDL_ListModes(Nil, sdlgraph_flags));
         Writeln('DetectGraph: SDL_ListModes returned: ', Int64(ra));
         if(ra=Nil) then
           Begin
@@ -432,8 +433,8 @@ implementation
                     GraphMode:=m1600x1200
                   else if(w=2048) and (h=1536) then
                     GraphMode:=m2048x1536
-				  else if(w=640) and (h=480) then
-					GraphMode:=m640x480
+                  else if(w=640) and (h=480) then
+                    GraphMode:=m640x480
                   else
                     Begin
                       Writeln('DetectGraph: This mode is unknown: ', w, 'x', h);
@@ -551,6 +552,7 @@ implementation
         Writeln('End of ega colors generating');
         sdlgraph_bgcolor:=EgaColors[0];
         sdlgraph_curcolor:=EgaColors[8];
+
         BeginThread(@DrawThread, Nil);
         Writeln('End of InitGraph');
       End;
