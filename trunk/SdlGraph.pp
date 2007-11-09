@@ -11,7 +11,7 @@ Uses SDL_types;
 
 Const
 
-   SDLgraph_version = '0.1';
+   SDLGraph_version = '0.1';
 
 
 { Constants for mode selection }
@@ -77,7 +77,7 @@ Const
 
 
 Type
-  SDLgraph_color = Uint32;
+  SDLGraph_color = Uint32;
 
   Procedure InitGraph (var GraphDriver,GraphMode : integer; const PathToDriver : string);
 
@@ -89,19 +89,19 @@ Type
 
   procedure DetectGraph(var GraphDriver, GraphMode: Integer);
 
-  procedure SDLgraph_SetWindowed(b:Boolean);
+  procedure SDLGraph_SetWindowed(b:Boolean);
 
   function GetMaxX:Integer;
   function GetMaxY:Integer;
 
-  procedure SetColor(color:SDLgraph_color);
-  function GetColor: SDLgraph_color;
+  procedure SetColor(color:SDLGraph_color);
+  function GetColor: SDLGraph_color;
 
-  function SDLgraph_MakeColor(r,g,b:Byte):SDLgraph_color;
+  function SDLGraph_MakeColor(r,g,b:Byte):SDLGraph_color;
 
-  procedure PutPixel(X,Y: Integer; color: SDLgraph_color);inline;
+  procedure PutPixel(X,Y: Integer; color: SDLGraph_color);inline;
 
-  function GetPixel(X, Y:Integer):SDLgraph_color;
+  function GetPixel(X, Y:Integer):SDLGraph_color;
 
   procedure Line(X1,Y1, X2, Y2:Integer);
 
@@ -121,15 +121,22 @@ Uses SDL, SDL_video, SDL_timer, cthreads;
 Uses SDL, SDL_video, SDL_timer;
 {$ENDIF}
 
+Const
+   {
+   Debug mode lets us see console messages and helps us test different resolutions.
+   Set to false for official builds.
+   }
+   debug_mode = true;
+
 Var
    screen:PSDL_Surface;
-   sdlgraph_graphresult:SmallInt;
-   sdlgraph_flags:Uint32;
-   sdlgraph_curcolor,
-   sdlgraph_bgcolor:SDLgraph_color;
+   SDLGraph_graphresult:SmallInt;
+   SDLGraph_flags:Uint32;
+   SDLGraph_curcolor,
+   SDLGraph_bgcolor:SDLGraph_color;
    
-   EgaColors:Array[0..15] of SDLgraph_color;
-   VgaColors:Array[0..255] of SDLgraph_color;
+   EgaColors:Array[0..15] of SDLGraph_color;
+   VgaColors:Array[0..255] of SDLGraph_color;
 
    gdriver:integer;
    must_be_locked:Boolean;
@@ -150,7 +157,7 @@ Begin
    a:= a - b;
 End;
 
-    procedure PutPixel_NoLock(X,Y: Integer; color: SDLgraph_color); {local;}register;
+    procedure PutPixel_NoLock(X,Y: Integer; color: SDLGraph_color); {local;}register;
       Var p:PUint8;
           bpp:Uint8;
       Begin
@@ -245,7 +252,7 @@ End;
       wp:^Word;
       p:^Byte;
       syp, sxp:^Byte;
-      color:SDLgraph_color;
+      color:SDLGraph_color;
       Begin
         wp:=@Bitmap;
         w:= wp^;
@@ -285,10 +292,23 @@ End;
 
     procedure ClearDevice;inline;
       Begin
-        SDL_FillRect(screen, Nil, SDLgraph_bgcolor);
+        SDL_FillRect(screen, Nil, SDLGraph_bgcolor);
       End;
 
-    procedure PutPixel(X,Y: Integer; color: SDLgraph_color);inline;
+   {
+   SDLGraph_MapColor
+      - takes current graph mode settings and creates an SDLGraph_color
+      - can be used in setcolor or putpixel
+   }
+
+   {
+   SDLGraph_UnMapColor
+      - takes SDLGraph_color and creates a color constant based on current graph mode settings
+      - can be used in getcolor and getpixel
+   }
+
+
+    procedure PutPixel(X,Y: Integer; color: SDLGraph_color);inline;
       Var dw:Dword;
       Begin
         {dw:=SDL_GetTicks;}
@@ -296,7 +316,7 @@ End;
         {Writeln('PutPixel_NoLock: Time drawing: ', SDL_GetTicks-dw);}
       End;
 
-    function GetPixel(X, Y:Integer):SDLgraph_color;
+    function GetPixel(X, Y:Integer):SDLGraph_color;
       Var p:PUint8;
           bpp:Uint8;
       Begin
@@ -311,6 +331,7 @@ End;
       End;
 
     procedure Line(X1,Y1, X2, Y2:Integer);
+    {Can we use the FPC GRAPH source for fast algorithms for most of our primitives?}
       Var X:Integer;
       Begin
         BeginDraw;
@@ -319,14 +340,14 @@ End;
             if(Y1>Y2) then
               Swap(Y1, Y2);
             for X:=Y2 downto Y1 do
-              PutPixel_NoLock(X2, X, SDLgraph_curcolor);
+              PutPixel_NoLock(X2, X, SDLGraph_curcolor);
           End
         else if(Y1=Y2) then
           Begin
             if(X1>X2) then
               Swap(X1, X2);
             for X:=X2 downto X1 do
-              PutPixel_NoLock(X, Y2, SDLgraph_curcolor);
+              PutPixel_NoLock(X, Y2, SDLGraph_curcolor);
           End
         else if(Abs(X2-X1)>Abs(Y2-Y1)) then
           Begin
@@ -336,7 +357,7 @@ End;
                 Swap(Y1,Y2);
               End;
             for X:=X2 downto X1 do
-              PutPixel_NoLock(X, Y1+Round((X-X1)*(Y2-Y1)/(X2-X1)), SDLgraph_curcolor);
+              PutPixel_NoLock(X, Y1+Round((X-X1)*(Y2-Y1)/(X2-X1)), SDLGraph_curcolor);
           End
         else
           Begin
@@ -346,30 +367,30 @@ End;
                 Swap(Y1,Y2);
               End;
             for X:=Y2 downto Y1 do
-              PutPixel_NoLock(X1+Round((X-Y1)*(X2-X1)/(Y2-Y1)), X, SDLgraph_curcolor);
+              PutPixel_NoLock(X1+Round((X-Y1)*(X2-X1)/(Y2-Y1)), X, SDLGraph_curcolor);
           End;
         EndDraw;
       End;
 
-    procedure SetColor(color:SDLgraph_color);
+    procedure SetColor(color:SDLGraph_color);
       Begin
          {Default case:}
-         sdlgraph_curcolor:=EgaColors[color];
-         {we need a big case statement here}
+         SDLGraph_curcolor:=EgaColors[color];
+         {we need a big case statement here, or use SDLGraph_MapColor (above)}
          case gdriver of
             D1bit : {maybe a nested procedure} ;
          end; {case}
       End;
 
-    function GetColor: SDLgraph_color;
+    function GetColor: SDLGraph_color;
       Begin
-        GetColor:=sdlgraph_curcolor;
+        GetColor:=SDLGraph_curcolor;
       End;
 
-    function SDLgraph_MakeColor(r,g,b:Byte):SDLgraph_color;
+    function SDLGraph_MakeColor(r,g,b:Byte):SDLGraph_color;
       Begin
-        SDLgraph_MakeColor:= SDL_MapRGB(screen^.format, r, g, b);
-        Writeln('SDLgraph_MakeColor: done');
+        SDLGraph_MakeColor:= SDL_MapRGB(screen^.format, r, g, b);
+        Writeln('SDLGraph_MakeColor: done');
       End;
 
     function GetMaxX:Integer;
@@ -383,12 +404,12 @@ End;
 
     function GraphResult: SmallInt;
       Begin
-        GraphResult:=sdlgraph_graphresult;
+        GraphResult:=SDLGraph_graphresult;
       End;
 
     function GraphErrorMsg(ErrorCode: SmallInt):String;
       Begin
-        case sdlgraph_graphresult of
+        case SDLGraph_graphresult of
           0:  GraphErrorMsg:='Everything is OK';
           -1: GraphErrorMsg:='Detect has not found proper graphic mode';
           End;
@@ -399,11 +420,11 @@ End;
           ra: PPSDL_Rect;
       Begin
         Writeln('Begin of DetectGraph');
-        ra:= PPSDL_Rect(SDL_ListModes(Nil, sdlgraph_flags));
+        ra:= PPSDL_Rect(SDL_ListModes(Nil, SDLGraph_flags));
         Writeln('DetectGraph: SDL_ListModes returned: ', Int64(ra));
         if(ra=Nil) then
           Begin
-            sdlgraph_graphresult:=-1;
+            SDLGraph_graphresult:=-1;
             Exit;
           End
         else
@@ -426,7 +447,7 @@ End;
                   else
                     Begin
                       Writeln('DetectGraph: This mode is unknown: ', w, 'x', h);
-                      sdlgraph_graphresult:=-1;
+                      SDLGraph_graphresult:=-1;
                       Exit;
                     End;
                   End
@@ -441,7 +462,7 @@ End;
               else
                 Begin
                   Writeln('DetectGraph: This bpp is unknown: ', bpp);
-                  sdlgraph_graphresult:=-1;
+                  SDLGraph_graphresult:=-1;
                   Exit;
                 End;
               End;
@@ -477,7 +498,7 @@ End;
       if GraphDriver=Detect then
         Begin
           DetectGraph(GraphDriver, GraphMode);
-          if(sdlgraph_graphresult<>0) then Exit;
+          if(SDLGraph_graphresult<>0) then Exit;
         End;
 
         case GraphDriver of
@@ -519,29 +540,29 @@ End;
           End;
 
         Writeln('InitGraph: will now initialize with: ', width, 'x', height, ', ', bpp);
-        screen:=SDL_SetVideoMode(width, height, bpp, sdlgraph_flags);
-        sdlgraph_graphresult:=0;
+        screen:=SDL_SetVideoMode(width, height, bpp, SDLGraph_flags);
+        SDLGraph_graphresult:=0;
         Writeln('Now will generate standart ega colors');
-        EgaColors[0]:=SDLgraph_MakeColor(0,0,0); {black}
-        EgaColors[1]:=SDLgraph_MakeColor(0,0,200); {blue}
-        EgaColors[2]:=SDLgraph_MakeColor(0,192,0); {green}
-        EgaColors[3]:=SDLgraph_MakeColor(0,192,192); {cyan}
-        EgaColors[4]:=SDLgraph_MakeColor(200,0,0); {red}
-        EgaColors[5]:=SDLgraph_MakeColor(150,0,150); {magenta}
-        EgaColors[6]:=SDLgraph_MakeColor(192,96,64); {brown}
-        EgaColors[7]:=SDLgraph_MakeColor(192,192,192); {lightgray}
-        EgaColors[8]:=SDLgraph_MakeColor(96,96,96); {darkgray}
-        EgaColors[9]:=SDLgraph_MakeColor(90,90,255); {lightblue}
-        EgaColors[10]:=SDLgraph_MakeColor(0,255,0); {lightgreen}
-        EgaColors[11]:=SDLgraph_MakeColor(0,255,255); {lightcyan}
-        EgaColors[12]:=SDLgraph_MakeColor(255,90,90); {lightred}
-        EgaColors[13]:=SDLgraph_MakeColor(255,0,255); {lightmagenta}
-        EgaColors[14]:=SDLgraph_MakeColor(255,255,0); {yellow}
-        EgaColors[15]:=SDLgraph_MakeColor(255,255,255); {white}
+        EgaColors[0]:=SDLGraph_MakeColor(0,0,0); {black}
+        EgaColors[1]:=SDLGraph_MakeColor(0,0,200); {blue}
+        EgaColors[2]:=SDLGraph_MakeColor(0,192,0); {green}
+        EgaColors[3]:=SDLGraph_MakeColor(0,192,192); {cyan}
+        EgaColors[4]:=SDLGraph_MakeColor(200,0,0); {red}
+        EgaColors[5]:=SDLGraph_MakeColor(150,0,150); {magenta}
+        EgaColors[6]:=SDLGraph_MakeColor(192,96,64); {brown}
+        EgaColors[7]:=SDLGraph_MakeColor(192,192,192); {lightgray}
+        EgaColors[8]:=SDLGraph_MakeColor(96,96,96); {darkgray}
+        EgaColors[9]:=SDLGraph_MakeColor(90,90,255); {lightblue}
+        EgaColors[10]:=SDLGraph_MakeColor(0,255,0); {lightgreen}
+        EgaColors[11]:=SDLGraph_MakeColor(0,255,255); {lightcyan}
+        EgaColors[12]:=SDLGraph_MakeColor(255,90,90); {lightred}
+        EgaColors[13]:=SDLGraph_MakeColor(255,0,255); {lightmagenta}
+        EgaColors[14]:=SDLGraph_MakeColor(255,255,0); {yellow}
+        EgaColors[15]:=SDLGraph_MakeColor(255,255,255); {white}
 
         Writeln('End of ega colors generating');
-        sdlgraph_bgcolor:=EgaColors[0];
-        sdlgraph_curcolor:=EgaColors[8];
+        SDLGraph_bgcolor:=EgaColors[0];
+        SDLGraph_curcolor:=EgaColors[8];
 
         BeginThread(@DrawThread, Nil);
         Writeln('End of InitGraph');
@@ -554,18 +575,23 @@ End;
         SDL_Quit;
       End;
 
-    procedure SDLgraph_SetWindowed(b:Boolean);
+    procedure SDLGraph_SetWindowed(b:Boolean);
       Begin
         if b then
-          sdlgraph_flags:= sdlgraph_flags and (not SDL_FULLSCREEN)
+          SDLGraph_flags:= SDLGraph_flags and (not SDL_FULLSCREEN)
         else
-          sdlgraph_flags:= sdlgraph_flags or SDL_FULLSCREEN;
+          SDLGraph_flags:= SDLGraph_flags or SDL_FULLSCREEN;
       End;
 
 
 Begin
    screen:=Nil;
-   sdlgraph_flags:=SDL_HWSURFACE or SDL_DOUBLEBUF or SDL_FULLSCREEN;
-   Writeln('SdlGraph initialized successful');
+   if (debug_mode) then
+      SDLGraph_flags:=SDL_HWSURFACE or SDL_DOUBLEBUF;
+   else
+      SDLGraph_flags:=SDL_HWSURFACE or SDL_DOUBLEBUF or SDL_FULLSCREEN;
+   Writeln('SDLGraph initialized successful');
    drawing_thread_status:=0;
 End.
+
+
