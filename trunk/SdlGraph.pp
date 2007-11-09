@@ -1,3 +1,5 @@
+{This code is covered under the terms of the LGPL.}
+
 UNIT SDLGraph;
 
 {$inline on}
