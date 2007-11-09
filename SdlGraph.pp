@@ -587,7 +587,7 @@ End;
 Begin
    screen:=Nil;
    if (debug_mode) then
-      SDLGraph_flags:=SDL_HWSURFACE or SDL_DOUBLEBUF;
+      SDLGraph_flags:=SDL_HWSURFACE or SDL_DOUBLEBUF
    else
       SDLGraph_flags:=SDL_HWSURFACE or SDL_DOUBLEBUF or SDL_FULLSCREEN;
    Writeln('SDLGraph initialized successful');
