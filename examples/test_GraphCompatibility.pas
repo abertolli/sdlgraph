@@ -1,4 +1,4 @@
-Program SDLGraph_Compatibility;
+Program GraphCompatibility;
 {
 Copyright (C) 2007 - Angelo Bertolli
 
@@ -7,7 +7,11 @@ provide identical results.
 
 }
 
+{$IFDEF FPC}
 Uses sdlgraph_crt, sdlgraph;
+{$ELSE}
+Uses crt, graph;
+{$ENDIF}
 
 {------------------------------------------------------------------}
 procedure testMode(GD,GM:integer);
