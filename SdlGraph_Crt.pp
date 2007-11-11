@@ -8,7 +8,8 @@ interface
 
   function KeyPressed: Boolean;
 
-  function GetTicks:Dword;inline;{non-standart function}
+{ non-standard function - commented out below}
+{  function GetTicks:Dword;inline;}
 
   procedure Delay(MS: DWord);
 
