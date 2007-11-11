@@ -75,6 +75,21 @@ Const
    yellow         = 14;
    white          = 15;
 
+{Fill function constants}
+   EmptyFill=0;
+   SolidFill=1;
+   LineFill=2;
+   LtSlashFill=3;
+   SlashFill=4;
+   BkSlashFill=5;
+   LtBkSlashFill=6;
+   HatchFill=7;
+   XHatchFill=8;
+   InterLeaveFill=9;
+   WideDotFill=10;
+   CloseDotFill=11;
+   UserFill=12;
+
 
 Type
   SDLGraph_color = Record
@@ -111,6 +126,17 @@ Type
   function GetPixel(X, Y:Integer):SDLGraph_color;
 
   procedure Line(X1,Y1, X2, Y2:Integer);
+
+  procedure OutTextXY(X,Y:Integer; S:String);
+
+  procedure SetFillStyle(Pattern:Word; Color:SDLgraph_color);
+
+  procedure FloodFill(X, Y:Integer; border:SDLgraph_color);
+
+  procedure Circle(X,Y:Integer; Radius:Word);
+
+  function TextWidth(S:String):Word;
+  function TextHeight(S:String):Word;
 
   function ImageSize(X1,Y1, X2,Y2:Integer):Integer;
 
@@ -271,7 +297,7 @@ Type
 
     operator := (col : SDLGraph_color) z: Integer;
       Begin
-        z:=col.i;
+        z:=col.i mod 16;{that will make colors to be periodical value}
       End;
 
     {This 2 procedures will make conversions between SDL and SDLgraph color formats}
@@ -282,7 +308,19 @@ Type
 
     function SDLgraph_to_SDL(col:SDLgraph_color): Uint32;
       Begin
-        SDLgraph_to_SDL:=SDL_MapRGBA(screen^.format, col.r, col.g, col.b, col.a);
+        if(gdriver=D1bit) then
+          Begin
+            if(col.r=0) and (col.g=0) and (col.b=0) then
+              SDLgraph_to_SDL:=SDL_MapRGB(screen^.format, 0,0,0)
+            else
+              SDLgraph_to_SDL:=SDL_MapRGB(screen^.format, 255,255,255);
+          End
+        else if(gdriver=D4bit) then
+          Begin
+            {some conversion actions}
+          End
+        else
+          SDLgraph_to_SDL:=SDL_MapRGBA(screen^.format, col.r, col.g, col.b, col.a);
       End;
 
     procedure PutPixel_NoLock(X,Y: Integer; sdlcolor: Uint32); {local;}register;
@@ -314,6 +352,36 @@ Type
  {       if must_be_locked then
           SDL_UnlockSurface(screen);
 }        SDL_Flip(screen);
+      End;
+
+    procedure SetFillStyle(Pattern:Word; Color:SDLgraph_color);
+      Begin
+        Writeln('SetFillStyle: stub');
+      End;
+
+    procedure OutTextXY(X,Y:Integer; S:String);
+      Begin
+        Writeln('OutTextXY: stub');
+      End;
+
+    procedure FloodFill(X, Y:Integer; border:SDLgraph_color);
+      Begin
+        Writeln('FloodFill: stub');
+      End;
+
+    procedure Circle(X,Y:Integer; Radius:Word);
+      Begin
+        Writeln('Circle: stub');
+      End;
+
+    function TextWidth(S:String):Word;
+      Begin
+        Writeln('TextWidth: stub');
+      End;
+
+    function TextHeight(S:String):Word;
+      Begin
+        Writeln('TextHeight: stub');
       End;
 
     function ImageSize(X1,Y1, X2,Y2:Integer):Integer;
