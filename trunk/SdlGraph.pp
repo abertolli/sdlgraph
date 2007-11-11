@@ -92,59 +92,45 @@ Const
 
 
 Type
+
+  {We should move this type to the Implementation}
   SDLGraph_color = Record
                      r,g,b,a:Uint8;
                      i:Integer;
                      End;
 
   operator := (col:Integer) z:SDLGraph_color;
-
   operator := (col : SDLGraph_color) z: Integer;
 
-  Procedure InitGraph (var GraphDriver,GraphMode : integer; const PathToDriver : string);
 
-  Procedure CloseGraph;
+{GRAPH declarations}
+  procedure   InitGraph (var GraphDriver,GraphMode : integer; const PathToDriver : string);
+  procedure   CloseGraph;
+  function    GraphResult: SmallInt;
+  function    GraphErrorMsg(ErrorCode: SmallInt):String;
+  procedure   DetectGraph(var GraphDriver, GraphMode: Integer);
+  function    GetMaxX:Integer;
+  function    GetMaxY:Integer;
+  procedure   SetColor(color:SDLGraph_color);
+  function    GetColor: SDLGraph_color;
+  procedure   PutPixel(X,Y: Integer; color: SDLGraph_color);inline;
+  function    GetPixel(X, Y:Integer):SDLGraph_color;
+  procedure   Line(X1,Y1, X2, Y2:Integer);
+  procedure   OutTextXY(X,Y:Integer; S:String);
+  procedure   SetFillStyle(Pattern:Word; Color:SDLgraph_color);
+  procedure   FloodFill(X, Y:Integer; border:SDLgraph_color);
+  procedure   Circle(X,Y:Integer; Radius:Word);
+  function    TextWidth(S:String):Word;
+  function    TextHeight(S:String):Word;
+  function    ImageSize(X1,Y1, X2,Y2:Integer):Integer;
+  procedure   GetImage(X1, Y1, X2, Y2:Integer; Var Bitmap);
+  procedure   PutImage(X0,Y0:Integer; Var Bitmap; BitBlit:Word);
+  procedure   ClearDevice;inline;
 
-  function GraphResult: SmallInt;
-
-  function GraphErrorMsg(ErrorCode: SmallInt):String;
-
-  procedure DetectGraph(var GraphDriver, GraphMode: Integer);
+{SDLGraph extension declarations}
 
   procedure SDLGraph_SetWindowed(b:Boolean);
-
-  function GetMaxX:Integer;
-  function GetMaxY:Integer;
-
-  procedure SetColor(color:SDLGraph_color);
-  function GetColor: SDLGraph_color;
-
   function SDLGraph_MakeColor(r,g,b:Byte):SDLGraph_color;
-
-  procedure PutPixel(X,Y: Integer; color: SDLGraph_color);inline;
-
-  function GetPixel(X, Y:Integer):SDLGraph_color;
-
-  procedure Line(X1,Y1, X2, Y2:Integer);
-
-  procedure OutTextXY(X,Y:Integer; S:String);
-
-  procedure SetFillStyle(Pattern:Word; Color:SDLgraph_color);
-
-  procedure FloodFill(X, Y:Integer; border:SDLgraph_color);
-
-  procedure Circle(X,Y:Integer; Radius:Word);
-
-  function TextWidth(S:String):Word;
-  function TextHeight(S:String):Word;
-
-  function ImageSize(X1,Y1, X2,Y2:Integer):Integer;
-
-  procedure GetImage(X1, Y1, X2, Y2:Integer; Var Bitmap);
-
-  procedure PutImage(X0,Y0:Integer; Var Bitmap; BitBlit:Word);
-
-  procedure ClearDevice;inline;
 
 IMPLEMENTATION
 
@@ -153,13 +139,6 @@ Uses SDL, SDL_video, SDL_timer, cthreads;
 {$ELSE}
 Uses SDL, SDL_video, SDL_timer;
 {$ENDIF}
-
-Const
-   {
-   Debug mode lets us see console messages and helps us test different resolutions.
-   Set to false for official builds.
-   }
-   debug_mode = true;
 
 Var
    screen:PSDL_Surface;
@@ -751,10 +730,7 @@ Type
 
 Begin
    screen:=Nil;
-   if (debug_mode) then
-      SDLGraph_flags:=SDL_HWSURFACE or SDL_DOUBLEBUF
-   else
-      SDLGraph_flags:=SDL_HWSURFACE or SDL_DOUBLEBUF or SDL_FULLSCREEN;
+   SDLGraph_flags:=SDL_HWSURFACE or SDL_DOUBLEBUF or SDL_FULLSCREEN;
    Writeln('SDLGraph initialized successful');
    drawing_thread_status:=0;
 End.
