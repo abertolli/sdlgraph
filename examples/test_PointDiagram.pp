@@ -7,7 +7,13 @@ Var mas:Array[1..Numbers] of Real;
     k, Max, Min:Real;
     S:String;
 Begin
-SDLgraph_SetWindowed(false);
+{
+Why doesn't it work with windowed mode?
+DetectGraph: SDL_ListModes returned: 4294967295
+An unhandled exception occurred at $00000000 :
+EAccessViolation : Access violation
+}
+SDLgraph_SetWindowed(true);
 Writeln('Enter ',Numbers,' real numbers');
 for i:=1 to Numbers do
  Begin
