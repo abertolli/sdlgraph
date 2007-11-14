@@ -8,12 +8,13 @@ Var mas:Array[1..Numbers] of Real;
     S:String;
 Begin
 {
-Why doesn't it work with windowed mode?
-DetectGraph: SDL_ListModes returned: 4294967295
-An unhandled exception occurred at $00000000 :
-EAccessViolation : Access violation
+I don't know. I works ok for me. Try to use something, instead of Detect.
+>Why doesn't it work with windowed mode?
+>DetectGraph: SDL_ListModes returned: 4294967295
+>An unhandled exception occurred at $00000000 :
+>EAccessViolation : Access violation
 }
-SDLgraph_SetWindowed(true);
+SDLgraph_SetWindowed(false);
 Writeln('Enter ',Numbers,' real numbers');
 for i:=1 to Numbers do
  Begin

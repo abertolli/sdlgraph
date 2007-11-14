@@ -8,7 +8,7 @@ Demo: compile and run for demonstration
 
 }
 
-Uses sdlgraph_crt, sdlgraph;
+Uses SdlGraph_Crt, SdlGraph;
 
 {------------------------------------------------------------------}
 procedure testMode(GD,GM:integer);

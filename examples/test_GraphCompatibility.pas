@@ -8,7 +8,7 @@ provide identical results.
 }
 
 {$IFDEF FPC}
-Uses sdlgraph_crt, sdlgraph;
+Uses SdlGraph_Crt, SdlGraph;
 {$ELSE}
 Uses crt, graph;
 {$ENDIF}
