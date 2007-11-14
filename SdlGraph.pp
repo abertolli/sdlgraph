@@ -105,6 +105,7 @@ Type
 
 {GRAPH declarations}
   procedure   InitGraph (var GraphDriver,GraphMode : integer; const PathToDriver : string);
+  procedure   InitGraph(var GraphDriver,GraphMode : integer);
   procedure   CloseGraph;
   function    GraphResult: SmallInt;
   function    GraphErrorMsg(ErrorCode: SmallInt):String;
@@ -119,7 +120,8 @@ Type
   procedure   OutTextXY(X,Y:Integer; S:String);
   procedure   SetFillStyle(Pattern:Word; Color:SDLgraph_color);
   procedure   FloodFill(X, Y:Integer; border:SDLgraph_color);
-  procedure   Circle(X,Y:Integer; Radius:Word);
+  procedure   Circle(xc,yc:Integer; Radius:Word);
+  procedure   Rectangle(X1,Y1,X2,Y2:Integer);
   function    TextWidth(S:String):Word;
   function    TextHeight(S:String):Word;
   function    ImageSize(X1,Y1, X2,Y2:Integer):Integer;
@@ -147,9 +149,9 @@ Var
    SDLGraph_curcolor,
    SDLGraph_bgcolor:Uint32;
 
-{   EgaColors:Array[0..15] of SDLGraph_color;
-   VgaColors:Array[0..255] of SDLGraph_color;
-}
+   EgaColors:Array[0..15] of SDLGraph_color;
+{   VgaColors:Array[0..255] of SDLGraph_color;}
+
    gdriver:integer;
    must_be_locked:Boolean;
    drawing_thread_status:Integer;
@@ -162,6 +164,15 @@ Type
    PByte   = ^Byte;
    PPSDL_Rect = ^PSDL_Rect;
 
+
+    procedure Rectangle(X1,Y1,X2,Y2:Integer);
+      Begin
+        Line(X1, Y1, X1, Y2);
+        Line(X1, Y2, X2, Y2);
+        Line(X2, Y2, X2, Y1);
+        Line(X2, Y1, X1, Y1);
+      End;
+
     Procedure Swap(Var a,b:Integer);
       Begin
         a:= a + b;
@@ -171,107 +182,7 @@ Type
 
     operator := (col:Integer) z:SDLGraph_color;
       Begin
-        z.i:=col;
-        with z do
-          Begin
-            case col of
-              black:
-                Begin
-                  r:=0;g:=0;b:=0;
-                End;
-              blue:
-                Begin
-                  r:=0;
-                  g:=0;
-                  b:=200;
-                End;
-              green:
-                Begin
-                  r:=0;
-                  g:=192;
-                  b:=0;
-                End;
-              cyan:
-                Begin
-                  r:=0;
-                  g:=192;
-                  b:=192;
-                End;
-              red:
-                Begin
-                  r:=200;
-                  g:=0;
-                  b:=0;
-                End;
-              magenta:
-                Begin
-                  r:=150;
-                  b:=0;
-                  g:=150;
-                End;
-              brown:
-                Begin
-                  r:=192;
-                  g:=96;
-                  b:=64;
-                End;
-              lightgray:
-                Begin
-                  r:=192;
-                  g:=192;
-                  b:=192;
-                End;
-              darkgray:
-                Begin
-                  r:=96;
-                  g:=96;
-                  b:=96;
-                End;
-              lightblue:
-                Begin
-                  r:=90;
-                  b:=90;
-                  b:=255;
-                End;
-              lightgreen:
-                Begin
-                  r:=0;
-                  g:=255;
-                  b:=0;
-                End;
-              lightcyan:
-                Begin
-                  r:=0;
-                  g:=255;
-                  b:=255;
-                End;
-              lightred:
-                Begin
-                  r:=255;
-                  g:=90;
-                  b:=90;
-                End;
-              lightmagenta:
-                Begin
-                  r:=255;
-                  g:=0;
-                  b:=255;
-                End;
-              yellow:
-                Begin
-                  r:=255;
-                  g:=255;
-                  b:=0;
-                End;
-              white:
-                Begin
-                  r:=255;
-                  b:=255;
-                  g:=255;
-                End;
-              End;
-            a:=0;
-          End;
+        z:=EgaColors[col];
       End;
 
     operator := (col : SDLGraph_color) z: Integer;
@@ -286,17 +197,21 @@ Type
       End;
 
     function SDLgraph_to_SDL(col:SDLgraph_color): Uint32;
+      Const max_rgb = 16777216;{2^24}
+      Var dw:Dword;
       Begin
         if(gdriver=D1bit) then
           Begin
-            if(col.r=0) and (col.g=0) and (col.b=0) then
-              SDLgraph_to_SDL:=SDL_MapRGB(screen^.format, 0,0,0)
+            if(col.r=255) and (col.g=255) and (col.b=255) then
+              SDLgraph_to_SDL:=SDL_MapRGBA(screen^.format, 255,255,255, col.a)
             else
-              SDLgraph_to_SDL:=SDL_MapRGB(screen^.format, 255,255,255);
+              SDLgraph_to_SDL:=SDL_MapRGBA(screen^.format, 0,0,0, col.a);
           End
         else if(gdriver=D4bit) then
           Begin
-            {some conversion actions}
+            dw:=col.r shl 16 + col.g shl 8 + col.b;
+            dw:=Round(dw/max_rgb*16);
+            SDLgraph_to_SDL:=SDL_MapRGBA(screen^.format, EgaColors[dw].r, EgaColors[dw].g, EgaColors[dw].b, col.a);
           End
         else
           SDLgraph_to_SDL:=SDL_MapRGBA(screen^.format, col.r, col.g, col.b, col.a);
@@ -348,10 +263,35 @@ Type
         Writeln('FloodFill: stub');
       End;
 
-    procedure Circle(X,Y:Integer; Radius:Word);
-      Begin
-        Writeln('Circle: stub');
-      End;
+    procedure Circle(xc,yc:Integer; Radius:Word);
+      {taken from(on russian): http://www.codenet.ru/progr/video/alg/alg4.php}
+      var x,y,d:integer;
+      procedure sim(x,y:integer);
+        begin
+          putpixel_NoLock(x+xc,y+yc,SDLGraph_curcolor);
+          putpixel_NoLock(x+xc,-y+yc,SDLGraph_curcolor);
+          putpixel_NoLock(-x+xc,-y+yc,SDLGraph_curcolor);
+          putpixel_NoLock(-x+xc,y+yc,SDLGraph_curcolor);
+          putpixel_NoLock(y+xc,x+yc,SDLGraph_curcolor);
+          putpixel_NoLock(y+xc,-x+yc,SDLGraph_curcolor);
+          putpixel_NoLock(-y+xc,-x+yc,SDLGraph_curcolor);
+          putpixel_NoLock(-y+xc,x+yc,SDLGraph_curcolor);
+        end;
+      begin
+        d:=3-2*y;
+        x:=0;
+        y:=Radius;
+        while(x <= y) do
+          begin
+          sim(x,y);
+          if d<0    then d:=d+4*x+6
+          else begin
+          d:=d+4*(x-y)+10;
+          dec(y)
+          end;
+        inc(x)
+        end;
+      end;
 
     function TextWidth(S:String):Word;
       Begin
@@ -649,6 +589,11 @@ Type
         DrawThread:=0;
       End;
 
+    Procedure InitGraph(var GraphDriver,GraphMode : integer);
+      Begin
+        InitGraph(GraphDriver, GraphMode, '');
+      End;
+
     Procedure InitGraph(var GraphDriver,GraphMode : integer; const PathToDriver : string);
       Var width, height, bpp:Integer;
       Begin
@@ -663,7 +608,7 @@ Type
         End;
 
         case GraphDriver of
-          D16bit: bpp:=16;
+          D4bit, D16bit: bpp:=16;
           D24bit: bpp:=24;
           D32bit: bpp:=32;
           End;
@@ -727,12 +672,85 @@ Type
           SDLGraph_flags:= SDLGraph_flags or SDL_FULLSCREEN;
       End;
 
-
+Var c:Integer;
 Begin
-   screen:=Nil;
-   SDLGraph_flags:=SDL_HWSURFACE or SDL_DOUBLEBUF or SDL_FULLSCREEN;
-   Writeln('SDLGraph initialized successful');
-   drawing_thread_status:=0;
+  screen:=Nil;
+  SDLGraph_flags:=SDL_HWSURFACE or SDL_DOUBLEBUF or SDL_FULLSCREEN;
+  Writeln('SDLGraph initialized successful');
+  drawing_thread_status:=0;
+  for c:=0 to 15 do
+    with EgaColors[c] do
+      Begin
+        i:=c;
+        case c of
+          black:
+            Begin
+              r:=0;g:=0;b:=0;
+            End;
+          blue:
+            Begin
+              r:=0;g:=0;b:=200;
+            End;
+          green:
+            Begin
+              r:=0;g:=192;b:=0;
+            End;
+          cyan:
+            Begin
+              r:=0;g:=192;b:=192;
+            End;
+          red:
+            Begin
+              r:=200;g:=0;b:=0;
+            End;
+          magenta:
+            Begin
+              r:=150;b:=0;g:=150;
+            End;
+          brown:
+            Begin
+              r:=192;g:=96;b:=64;
+            End;
+          lightgray:
+            Begin
+              r:=192;g:=192;b:=192;
+            End;
+          darkgray:
+            Begin
+              r:=96;g:=96;b:=96;
+            End;
+          lightblue:
+            Begin
+              r:=90;b:=90;b:=255;
+            End;
+          lightgreen:
+            Begin
+              r:=0;g:=255;b:=0;
+            End;
+          lightcyan:
+            Begin
+              r:=0;g:=255;b:=255;
+            End;
+          lightred:
+            Begin
+              r:=255;g:=90;b:=90;
+            End;
+          lightmagenta:
+            Begin
+              r:=255;g:=0;b:=255;
+            End;
+          yellow:
+            Begin
+              r:=255;g:=255;b:=0;
+            End;
+          white:
+            Begin
+              r:=255;b:=255;g:=255;
+            End;
+          End;
+        a:=0;
+      End;
+
 End.
 
 
