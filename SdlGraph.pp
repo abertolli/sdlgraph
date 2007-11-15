@@ -92,12 +92,16 @@ Const
 
 
 Type
-
   {We should move this type to the Implementation}
   SDLGraph_color = Record
                      r,g,b,a:Uint8;
                      i:Integer;
                      End;
+  FillPatternType  = Array[1..8] of Byte;
+  FillSettingsType = Record
+                       Pattern:Word;
+                       Color:SDLgraph_color;
+                       End;
 
   operator := (col:Integer) z:SDLGraph_color;
   operator := (col : SDLGraph_color) z: Integer;
@@ -115,10 +119,11 @@ Type
   procedure   SetColor(color:SDLGraph_color);
   function    GetColor: SDLGraph_color;
   procedure   PutPixel(X,Y: Integer; color: SDLGraph_color);inline;
-  function    GetPixel(X, Y:Integer):SDLGraph_color;
+  function    GetPixel(X, Y:Integer):SDLGraph_color;inline;
   procedure   Line(X1,Y1, X2, Y2:Integer);
   procedure   OutTextXY(X,Y:Integer; S:String);
   procedure   SetFillStyle(Pattern:Word; Color:SDLgraph_color);
+  procedure   SetFillPattern(Pattern:FillPatternType; Color:SDLgraph_color);
   procedure   FloodFill(X, Y:Integer; border:SDLgraph_color);
   procedure   Circle(xc,yc:Integer; Radius:Word);
   procedure   Rectangle(X1,Y1,X2,Y2:Integer);
@@ -142,18 +147,37 @@ Uses SDL, SDL_video, SDL_timer, cthreads;
 Uses SDL, SDL_video, SDL_timer;
 {$ENDIF}
 
+Const
+   PreDefPatterns:Array[0..11] of FillPatternType =
+    (($FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF),{EmptyFill}
+    ($FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF),{SolidFill}
+    ($FF, 0,   $FF, 0,   $FF, 0,   $FF, 0  ),{LineFill}
+    (0,   0,   0,   0,   0,   0,   0,   0  ),{LtSlashFill}
+    (0,   0,   0,   0,   0,   0,   0,   0  ),{SlashFill}
+    (0,   0,   0,   0,   0,   0,   0,   0  ),{BkSlashFill}
+    (0,   0,   0,   0,   0,   0,   0,   0  ),{LtBkSlashFill}
+    (0,   0,   0,   0,   0,   0,   0,   0  ),{HatchFill}
+    (0,   0,   0,   0,   0,   0,   0,   0  ),{XHatchFill}
+    (0,   0,   0,   0,   0,   0,   0,   0  ),{InterLeaveFill}
+    (0,   0,   0,   0,   0,   0,   0,   0  ),{WideDotFill}
+    (0,   0,   0,   0,   0,   0,   0,   0  ){CloseDotFill}
+    );
+
 Var
    screen:PSDL_Surface;
    SDLGraph_graphresult:SmallInt;
    SDLGraph_flags:Uint32;
    SDLGraph_curcolor,
-   SDLGraph_bgcolor:Uint32;
+   SDLGraph_bgcolor,
+   SDLGraph_curfillcolor:Uint32;
+   cur_fillpattern:word;
+   cur_userfillpattern :FillPatternType;
 
    EgaColors:Array[0..15] of SDLGraph_color;
 {   VgaColors:Array[0..255] of SDLGraph_color;}
 
    gdriver:integer;
-   must_be_locked:Boolean;
+   //must_be_locked:Boolean;
    drawing_thread_status:Integer;
 
 
@@ -234,6 +258,25 @@ Type
           End;
       End;
 
+    function GetPixel_sdlcolor(X, Y:Integer):Uint32;
+      Var p:PUint8;
+          bpp:Uint8;
+      Begin
+        bpp:=screen^.format^.BytesPerPixel;
+        p:= PUint8(screen^.pixels) + Y * screen^.pitch + X * bpp;
+        Case bpp of
+          2: GetPixel_sdlcolor:=PUint16(p)^;//SDL_to_SDLgraph(PUint16(p)^);
+          4: GetPixel_sdlcolor:=PUint32(p)^;//SDL_to_SDLgraph(PUint32(p)^);
+          else
+            Writeln('GetPixel: Unknown bpp: ', bpp);
+          End;
+      End;
+
+    function GetPixel(X, Y:Integer):SDLGraph_color;
+      Begin
+        GetPixel:=SDL_to_SDLgraph(GetPixel_sdlcolor(X,Y));
+      End;
+
     procedure BeginDraw;inline;{local;}
       Begin
 {        must_be_locked:=SDL_MUSTLOCK(screen);
@@ -250,7 +293,14 @@ Type
 
     procedure SetFillStyle(Pattern:Word; Color:SDLgraph_color);
       Begin
-        Writeln('SetFillStyle: stub');
+        cur_fillpattern:=Pattern;
+        SDLGraph_curfillcolor:=SDLgraph_to_SDL(Color);
+      End;
+
+    procedure SetFillPattern(Pattern:FillPatternType; Color:SDLgraph_color);
+      Begin
+        cur_userfillpattern:=Pattern;
+        SDLGraph_curfillcolor  :=SDLgraph_to_SDL(Color);
       End;
 
     procedure OutTextXY(X,Y:Integer; S:String);
@@ -258,9 +308,92 @@ Type
         Writeln('OutTextXY: stub');
       End;
 
+    procedure FloodFill_color_pattern(X0,Y0:word; BC, IC:Uint32;pattern:FillPatternType);
+      Var StackX, StackY:Array of word;
+          x,y,xm,xr,xl:word;
+          j:Integer;
+          Top, StackSize:LongInt;
+          C:boolean;
+          pat_arr:Array[0..7] of Array[0..7] of boolean;
+          col:Uint32;
+      procedure PutPixel_Local;inline;
+        Begin
+          if(pat_arr[y mod 8][x mod 8]) then
+            PutPixel_NoLock(x,y, IC);
+        End;
+      begin
+        for y:=0 to 7 do
+          for x:=0 to 7 do
+            pat_arr[y][x] := boolean(pattern[y] and ($01 shl x));
+        StackSize:= screen^.w * screen^.h;
+        SetLength(StackX, StackSize);
+        SetLength(StackY, StackSize);
+        Top:=0;
+        StackX[Top]:=x0;
+        StackY[Top]:=y0;
+        while Top<>-1 do
+          begin
+            x:=StackX[Top];
+            y:=StackY[Top];
+            Top:=Top-1;
+            PutPixel_Local;
+            xm:=x;
+            while GetPixel_sdlcolor(x,y)<>BC do
+              begin
+                PutPixel_Local;
+                x:=x+1;
+              end;
+            xr:=x-1;
+            x:=xm;
+            while GetPixel_sdlcolor(x,y)<>BC do
+              begin
+                PutPixel_Local;
+                x:=x-1;
+              end;
+            xl:=x+1;
+            j:=1;
+            repeat
+              y:=y+j;
+              x:=xl;
+              while x<=xr do
+                begin
+                  C:=False;
+                  col:=GetPixel_sdlcolor(x,y);
+                  while (col<>BC) and(col<>IC) and(x<xr) do
+                    begin
+                      C:=True;
+                      x:=x+1;
+                      col:=GetPixel_sdlcolor(x,y);
+                    end;
+                  if C then
+                    begin
+                      Top:=Top+1;
+                      StackX[Top]:=x;
+                      StackY[Top]:=y;
+                    end;
+                  repeat
+                    x:=x+1;
+                    col:=GetPixel_sdlcolor(x,y);
+                  until not((col=BC) or(col=IC) and(x<xr));
+                end;
+              j:=j-3;
+            until not(j>=-2);
+          end;
+      end;
+
     procedure FloodFill(X, Y:Integer; border:SDLgraph_color);
+      Var fill_color:Uint32;
+          pat:FillPatternType;
       Begin
-        Writeln('FloodFill: stub');
+        if(cur_fillpattern=EmptyFill) then
+          fill_color:=SDLGraph_bgcolor
+        else
+          fill_color:=SDLGraph_curfillcolor;
+        if(cur_fillpattern=UserFill) then
+          pat:=cur_userfillpattern
+        else
+          pat:=PreDefPatterns[cur_fillpattern];
+        FloodFill_color_pattern(X,Y, SDLgraph_to_SDL(border), fill_color, pat);
       End;
 
     procedure Circle(xc,yc:Integer; Radius:Word);
@@ -417,20 +550,6 @@ Type
         {dw:=SDL_GetTicks;}
         PutPixel_NoLock(X,Y, SDLgraph_to_SDL(color));
         {Writeln('PutPixel_NoLock: Time drawing: ', SDL_GetTicks-dw);}
-      End;
-
-    function GetPixel(X, Y:Integer):SDLGraph_color;
-      Var p:PUint8;
-          bpp:Uint8;
-      Begin
-        bpp:=screen^.format^.BytesPerPixel;
-        p:= PUint8(screen^.pixels) + Y * screen^.pitch + X * bpp;
-        Case bpp of
-          2: GetPixel:=SDL_to_SDLgraph(PUint16(p)^);
-          4: GetPixel:=SDL_to_SDLgraph(PUint32(p)^);
-          else
-            Writeln('GetPixel: Unknown bpp: ', bpp);
-          End;
       End;
 
     procedure Line(X1,Y1, X2, Y2:Integer);
