@@ -87,6 +87,7 @@ for i:=1 to Numbers do
  End;
 SetColor(Red);
 OutTextXY(Tab+2, OsY+2, '0');
+writeln('test_PointDiagram: drawing ends');
 Repeat until keypressed;
 CloseGraph;
 End.

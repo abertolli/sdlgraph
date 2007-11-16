@@ -84,7 +84,10 @@ implementation
       if(point=0) then
         KeyPressed:=false
       else
-        KeyPressed:=true;
+        Begin
+          KeyPressed:=true;
+          Writeln('KeyPressed: returns true');
+        End;
     End;
 
   function GetTicks:Dword;
