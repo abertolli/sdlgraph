@@ -178,8 +178,13 @@ Var
 
    gdriver:integer;
    //must_be_locked:Boolean;
-   drawing_thread_status:Integer;
-
+   drawing_thread_status:LongInt;
+   drawing_thread_id
+   {$IFDEF CPUX86_64 }
+    :qword;
+   {$ELSE}
+    :dword;
+   {$ENDIF}
 
 Type
    PUint8  = ^Uint8;
@@ -235,6 +240,7 @@ Type
           Begin
             dw:=col.r shl 16 + col.g shl 8 + col.b;
             dw:=Round(dw/max_rgb*16);
+            Writeln('Conversion to 4-bit resulted: ', dw);
             SDLgraph_to_SDL:=SDL_MapRGBA(screen^.format, EgaColors[dw].r, EgaColors[dw].g, EgaColors[dw].b, col.a);
           End
         else
@@ -252,7 +258,7 @@ Type
         p:= PUint8(screen^.pixels) + Y * screen^.pitch + X * bpp;
         Case bpp of
           2: PUint16(p)^:=sdlcolor;
-          4: PUint32(p)^:=sdlcolor;
+          3,4: PUint32(p)^:=sdlcolor;
           else
             Writeln('PutPixel_NoLock: Unknown bpp: ', bpp);
           End;
@@ -277,7 +283,7 @@ Type
         GetPixel:=SDL_to_SDLgraph(GetPixel_sdlcolor(X,Y));
       End;
 
-    procedure BeginDraw;inline;{local;}
+(*    procedure BeginDraw;inline;{local;}
       Begin
 {        must_be_locked:=SDL_MUSTLOCK(screen);
         if must_be_locked then
@@ -288,9 +294,9 @@ Type
       Begin
  {       if must_be_locked then
           SDL_UnlockSurface(screen);
-}        SDL_Flip(screen);
+        SDL_Flip(screen);}
       End;
-
+*)
     procedure SetFillStyle(Pattern:Word; Color:SDLgraph_color);
       Begin
         cur_fillpattern:=Pattern;
@@ -324,7 +330,7 @@ Type
       begin
         for y:=0 to 7 do
           for x:=0 to 7 do
-            pat_arr[y][x] := boolean(pattern[y] and ($01 shl x));
+            pat_arr[y][x] := boolean(pattern[y+1] and ($01 shl x));
         StackSize:= screen^.w * screen^.h;
         SetLength(StackX, StackSize);
         SetLength(StackY, StackSize);
@@ -352,6 +358,7 @@ Type
               end;
             xl:=x+1;
             j:=1;
+            Writeln('FloodFill_color_pattern: Line processing [', xl, ';', xr, ']');
             repeat
               y:=y+j;
               x:=xl;
@@ -365,6 +372,7 @@ Type
                       x:=x+1;
                       col:=GetPixel_sdlcolor(x,y);
                     end;
+                  Writeln('FloodFill_color_pattern: Do we need do draw on line ', y,'? ',C);
                   if C then
                     begin
                       Top:=Top+1;
@@ -556,7 +564,6 @@ Type
     {Can we use the FPC GRAPH source for fast algorithms for most of our primitives?}
       Var X:Integer;
       Begin
-        BeginDraw;
         if(X1=X2) then
           Begin
             if(Y1>Y2) then
@@ -591,7 +598,6 @@ Type
             for X:=Y2 downto Y1 do
               PutPixel_NoLock(X1+Round((X-Y1)*(X2-X1)/(Y2-Y1)), X, SDLGraph_curcolor);
           End;
-        EndDraw;
       End;
 
     procedure SetColor(color:SDLGraph_color);
@@ -700,11 +706,12 @@ Type
         drawing_thread_status:=1;
         while drawing_thread_status<>0 do
           Begin
-            SDL_Delay(40);
+            //SDL_Delay(10);
+            {SDL_UnLockSurface(screen);}
             {1000/25 - frame every 1/25 of second} {We don't need to update screen more frequently. Human eye can see only 25 fps}
             SDL_Flip(screen);
+            {SDL_LockSurface(screen);}
           End;
-        drawing_thread_status:=-1;
         DrawThread:=0;
       End;
 
@@ -727,8 +734,8 @@ Type
         End;
 
         case GraphDriver of
-          D4bit, D16bit: bpp:=16;
-          D24bit: bpp:=24;
+          D16bit: bpp:=16;
+          D4bit, D24bit: bpp:=24;
           D32bit: bpp:=32;
           End;
         case GraphMode of
@@ -772,15 +779,19 @@ Type
         Writeln('Default background: ', SDLGraph_bgcolor);
         SDLGraph_curcolor:=SDLgraph_to_SDL(White);
 
-        BeginThread(@DrawThread, Nil);
+        SDLGraph_curfillcolor:=SDLGraph_curcolor;
+
+        BeginThread(@DrawThread, Nil, drawing_thread_id);
         Writeln('End of InitGraph');
       End;
 
     Procedure CloseGraph;
       Begin
-        drawing_thread_status:=0;
-        while drawing_thread_status<>-1 do;
+        InterLockedDecrement(drawing_thread_status);
+        WaitForThreadTerminate(drawing_thread_id, 5000);
+        Writeln('CloseGraph: Shutting down SDL');
         SDL_Quit;
+        Writeln('CloseGraph: done');
       End;
 
     procedure SDLGraph_SetWindowed(b:Boolean);
@@ -797,79 +808,75 @@ Begin
   SDLGraph_flags:=SDL_HWSURFACE or SDL_DOUBLEBUF or SDL_FULLSCREEN;
   Writeln('SDLGraph initialized successful');
   drawing_thread_status:=0;
+  with EgaColors[black] do
+    Begin
+      r:=0;g:=0;b:=0;
+    End;
+  with EgaColors[blue] do
+    Begin
+      r:=0;g:=0;b:=200;
+    End;
+  with EgaColors[green] do
+    Begin
+      r:=0;g:=192;b:=0;
+    End;
+  with EgaColors[cyan] do
+    Begin
+      r:=0;g:=192;b:=192;
+    End;
+  with EgaColors[red] do
+    Begin
+      r:=200;g:=0;b:=0;
+    End;
+  with EgaColors[magenta] do
+    Begin
+      r:=150;b:=0;g:=150;
+    End;
+  with EgaColors[brown] do
+    Begin
+      r:=192;g:=96;b:=64;
+    End;
+  with EgaColors[lightgray] do
+    Begin
+      r:=192;g:=192;b:=192;
+    End;
+  with EgaColors[darkgray] do
+    Begin
+      r:=96;g:=96;b:=96;
+    End;
+  with EgaColors[lightblue] do
+    Begin
+      r:=90;b:=90;b:=255;
+    End;
+  with EgaColors[lightgreen] do
+    Begin
+      r:=0;g:=255;b:=0;
+    End;
+  with EgaColors[lightcyan] do
+    Begin
+      r:=0;g:=255;b:=255;
+    End;
+  with EgaColors[lightred] do
+    Begin
+      r:=255;g:=90;b:=90;
+    End;
+  with EgaColors[lightmagenta] do
+    Begin
+      r:=255;g:=0;b:=255;
+    End;
+  with EgaColors[yellow] do
+    Begin
+      r:=255;g:=255;b:=0;
+    End;
+  with EgaColors[white] do
+    Begin
+      r:=255;b:=255;g:=255;
+    End;
   for c:=0 to 15 do
     with EgaColors[c] do
       Begin
         i:=c;
-        case c of
-          black:
-            Begin
-              r:=0;g:=0;b:=0;
-            End;
-          blue:
-            Begin
-              r:=0;g:=0;b:=200;
-            End;
-          green:
-            Begin
-              r:=0;g:=192;b:=0;
-            End;
-          cyan:
-            Begin
-              r:=0;g:=192;b:=192;
-            End;
-          red:
-            Begin
-              r:=200;g:=0;b:=0;
-            End;
-          magenta:
-            Begin
-              r:=150;b:=0;g:=150;
-            End;
-          brown:
-            Begin
-              r:=192;g:=96;b:=64;
-            End;
-          lightgray:
-            Begin
-              r:=192;g:=192;b:=192;
-            End;
-          darkgray:
-            Begin
-              r:=96;g:=96;b:=96;
-            End;
-          lightblue:
-            Begin
-              r:=90;b:=90;b:=255;
-            End;
-          lightgreen:
-            Begin
-              r:=0;g:=255;b:=0;
-            End;
-          lightcyan:
-            Begin
-              r:=0;g:=255;b:=255;
-            End;
-          lightred:
-            Begin
-              r:=255;g:=90;b:=90;
-            End;
-          lightmagenta:
-            Begin
-              r:=255;g:=0;b:=255;
-            End;
-          yellow:
-            Begin
-              r:=255;g:=255;b:=0;
-            End;
-          white:
-            Begin
-              r:=255;b:=255;g:=255;
-            End;
-          End;
         a:=0;
       End;
-
+  cur_fillpattern:=SolidFill;
 End.
-
-
