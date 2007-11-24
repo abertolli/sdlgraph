@@ -1,6 +1,6 @@
 #!/bin/sh
-rm -r build
 mkdir build
+rm -r build/*
 for i in ./trunk/SdlGraph*.pp; do
 	fpc -O2 -FE./build $i
 done

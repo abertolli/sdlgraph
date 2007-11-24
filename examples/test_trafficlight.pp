@@ -1,11 +1,12 @@
 Uses SdlGraph, SdlGraph_Crt;
 
-Const Tab=50;
+Const Tab=20;
 
 Var W,H,GM, GD:Integer;
 Begin
+  SDLgraph_SetWindowed(true);
   GD:=D32bit;
-  GM:=m1280x1024;
+  GM:=m320x256;
   InitGraph(GD, GM);
   W:=GetMaxX;
   H:=GetMaxY;

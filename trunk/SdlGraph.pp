@@ -141,11 +141,11 @@ Type
 
 IMPLEMENTATION
 
+Uses SDL, SDL_video, SDL_timer, SdlGraph_Crt
 {$IFDEF unix}
-Uses SDL, SDL_video, SDL_timer, cthreads;
-{$ELSE}
-Uses SDL, SDL_video, SDL_timer;
+, cthreads
 {$ENDIF}
+;
 
 Const
    PreDefPatterns:Array[0..11] of FillPatternType =
@@ -192,7 +192,6 @@ Type
    PUint32 = ^Uint32;
    PByte   = ^Byte;
    PPSDL_Rect = ^PSDL_Rect;
-
 
     procedure Rectangle(X1,Y1,X2,Y2:Integer);
       Begin
@@ -320,14 +319,23 @@ Type
           j:Integer;
           Top, StackSize:LongInt;
           C:boolean;
+          in_b:byte;
           pat_arr:Array[0..7] of Array[0..7] of boolean;
           col:Uint32;
       procedure PutPixel_Local;inline;
         Begin
           if(pat_arr[y mod 8][x mod 8]) then
-            PutPixel_NoLock(x,y, IC);
+            Begin
+              PutPixel_NoLock(x,y, IC);
+            End;
         End;
+      function GetPixel_Local:Uint32;inline;
+        Begin
+          GetPixel_Local:=GetPixel_sdlcolor(x,y);
+        End;
+
       begin
+        Writeln('FloodFill_color_pattern: Border color: ', BC);
         for y:=0 to 7 do
           for x:=0 to 7 do
             pat_arr[y][x] := boolean(pattern[y+1] and ($01 shl x));
@@ -341,49 +349,67 @@ Type
           begin
             x:=StackX[Top];
             y:=StackY[Top];
+            Writeln('FloodFill_color_pattern: Got point (',x,'; ', y, ')');
             Top:=Top-1;
             PutPixel_Local;
             xm:=x;
-            while GetPixel_sdlcolor(x,y)<>BC do
-              begin
-                PutPixel_Local;
-                x:=x+1;
-              end;
+            repeat
+              PutPixel_Local;
+              Inc(x);
+            until GetPixel_Local=BC;
             xr:=x-1;
             x:=xm;
-            while GetPixel_sdlcolor(x,y)<>BC do
-              begin
-                PutPixel_Local;
-                x:=x-1;
-              end;
+            repeat
+              PutPixel_Local;
+              Dec(x);
+            until GetPixel_Local=BC;
             xl:=x+1;
             j:=1;
-            Writeln('FloodFill_color_pattern: Line processing [', xl, ';', xr, ']');
+            Writeln('FloodFill_color_pattern: X left = ', xl, '; X right = ', xr);
             repeat
               y:=y+j;
-              x:=xl;
-              while x<=xr do
+              x:=xr;
+{              while x<xr do
                 begin
-                  C:=False;
-                  col:=GetPixel_sdlcolor(x,y);
-                  while (col<>BC) and(col<>IC) and(x<xr) do
+}                  C:=False;
+                  col:=GetPixel_Local;
+                  in_b:=0;
+                  while (x>xl) do
                     begin
-                      C:=True;
-                      x:=x+1;
-                      col:=GetPixel_sdlcolor(x,y);
+(*                      if(in_b=0) then
+                        Begin
+                          if(col=BC) or (col=IC) then
+                            in_b:=1;
+                        End
+                      else if(in_b=1) then
+                        Begin
+                          if(col<>BC) and (col<>IC) then
+                            Begin
+                              C:=True;
+                              break;
+                            End;
+                        End;
+  *)
+                      C:=true;
+                      Dec(x);
+                      col:=GetPixel_Local;
                     end;
-                  Writeln('FloodFill_color_pattern: Do we need do draw on line ', y,'? ',C);
+
+                  if(x>xr) then
+                    Dec(x);
+
                   if C then
                     begin
-                      Top:=Top+1;
+                      Inc(Top);
                       StackX[Top]:=x;
                       StackY[Top]:=y;
+                      Writeln('FloodFill_color_pattern: Pushed new point to stack: (', x, '; ',y, ')');
                     end;
-                  repeat
+{                  repeat
                     x:=x+1;
-                    col:=GetPixel_sdlcolor(x,y);
+                    col:=GetPixel_Local;
                   until not((col=BC) or(col=IC) and(x<xr));
-                end;
+}//                end;
               j:=j-3;
             until not(j>=-2);
           end;
@@ -669,6 +695,8 @@ Type
                     GraphMode:=m2048x1536
                   else if(w=640) and (h=480) then
                     GraphMode:=m640x480
+                  else if(w=320) and (h=256) then
+                    GraphMode:=m320x256
                   else
                     Begin
                       Writeln('DetectGraph: This mode is unknown: ', w, 'x', h);
@@ -739,11 +767,16 @@ Type
           D32bit: bpp:=32;
           End;
         case GraphMode of
-        m640x480:
-         Begin
-           width:=640;
-           height:=480
-         End;
+          m640x480:
+            Begin
+              width:=640;
+              height:=480
+            End;
+          m320x256:
+            Begin
+              width:=320;
+              height:=256;
+            End;
           m800x600:
             Begin
               width:=800;
