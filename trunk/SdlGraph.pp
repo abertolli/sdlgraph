@@ -92,7 +92,7 @@ Const
 
 
 Type
-  {We should move this type to the Implementation}
+  {Future TODO:  move SDLGraph_color to the Implementation, and provide overloaded functions}
   SDLGraph_color = Record
                      r,g,b,a:Uint8;
                      i:Integer;
@@ -118,8 +118,8 @@ Type
   function    GetMaxY:Integer;
   procedure   SetColor(color:SDLGraph_color);
   function    GetColor: SDLGraph_color;
-  procedure   PutPixel(X,Y: Integer; color: SDLGraph_color);inline;
-  function    GetPixel(X, Y:Integer):SDLGraph_color;inline;
+  procedure   PutPixel(X,Y:Integer; color: SDLGraph_color);inline;
+  function    GetPixel(X,Y:Integer):SDLGraph_color;inline;
   procedure   Line(X1,Y1, X2, Y2:Integer);
   procedure   OutTextXY(X,Y:Integer; S:String);
   procedure   SetFillStyle(Pattern:Word; Color:SDLgraph_color);

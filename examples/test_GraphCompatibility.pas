@@ -13,20 +13,17 @@ Uses SdlGraph_Crt, SdlGraph;
 Uses crt, graph;
 {$ENDIF}
 
-{------------------------------------------------------------------}
-procedure testMode(GD,GM:integer);
+Var
 
-begin
-   initgraph(GD,GM,'');
-
-   { Just display some blocks of color here. }
-
-end;
-{------------------------------------------------------------------}
+   GD, GM: integer;
 
 Begin
 
-testMode(D4bit,m640x480);
+   initgraph(GD,GM,'');
+   { Test setting colors }
+   { Test drawing primitives }
+   { Test getting colors }
+
 
 End.
 
