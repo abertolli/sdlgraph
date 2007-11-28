@@ -92,19 +92,11 @@ Const
 
 
 Type
-  {Future TODO:  move SDLGraph_color to the Implementation, and provide overloaded functions}
-  SDLGraph_color = Record
-                     r,g,b,a:Uint8;
-                     i:Integer;
-                     End;
   FillPatternType  = Array[1..8] of Byte;
   FillSettingsType = Record
                        Pattern:Word;
-                       Color:SDLgraph_color;
+                       Color:Uint32;
                        End;
-
-  operator := (col:Integer) z:SDLGraph_color;
-  operator := (col : SDLGraph_color) z: Integer;
 
 
 {GRAPH declarations}
@@ -116,15 +108,31 @@ Type
   procedure   DetectGraph(var GraphDriver, GraphMode: Integer);
   function    GetMaxX:Integer;
   function    GetMaxY:Integer;
-  procedure   SetColor(color:SDLGraph_color);
-  function    GetColor: SDLGraph_color;
-  procedure   PutPixel(X,Y:Integer; color: SDLGraph_color);inline;
-  function    GetPixel(X,Y:Integer):SDLGraph_color;inline;
+
+  procedure   SetColor(col:Integer);
+  procedure   SetColor(r,g,b,a:Byte);
+
+  function    GetColor: Integer;
+  procedure   GetColor(Var r,g,b,a:Byte);
+
+  procedure   PutPixel(X,Y:Integer; col:Integer);inline;
+  procedure   PutPixel(X,Y:Integer; r,g,b,a:Byte);
+
+  function    GetPixel(X,Y:Integer):Integer;inline;
+  procedure   GetPixel(X,Y:Integer; Var R,G,B,A:Byte);inline;
+
   procedure   Line(X1,Y1, X2, Y2:Integer);
   procedure   OutTextXY(X,Y:Integer; S:String);
-  procedure   SetFillStyle(Pattern:Word; Color:SDLgraph_color);
-  procedure   SetFillPattern(Pattern:FillPatternType; Color:SDLgraph_color);
-  procedure   FloodFill(X, Y:Integer; border:SDLgraph_color);
+
+  procedure   SetFillStyle(Pattern:Word; Color:Integer);inline;
+  procedure   SetFillStyle(Pattern:Word; r,g,b,a:Byte);inline;
+
+  procedure   SetFillPattern(Pattern:FillPatternType; Color:Integer);inline;
+  procedure   SetFillPattern(Pattern:FillPatternType; r,g,b,a:Byte);inline;
+
+  procedure   FloodFill(X, Y:Integer; border:Integer);inline;
+  procedure   FloodFill(X, Y:Integer; r,g,b,a:Byte);inline;
+
   procedure   Circle(xc,yc:Integer; Radius:Word);
   procedure   Rectangle(X1,Y1,X2,Y2:Integer);
   function    TextWidth(S:String):Word;
@@ -137,7 +145,6 @@ Type
 {SDLGraph extension declarations}
 
   procedure SDLGraph_SetWindowed(b:Boolean);
-  function SDLGraph_MakeColor(r,g,b:Byte):SDLGraph_color;
 
 IMPLEMENTATION
 
@@ -173,7 +180,9 @@ Var
    cur_fillpattern:word;
    cur_userfillpattern :FillPatternType;
 
-   EgaColors:Array[0..15] of SDLGraph_color;
+   EgaColors:Array[0..15] of Record
+                               r,g,b:Byte
+                               End;
 {   VgaColors:Array[0..255] of SDLGraph_color;}
 
    gdriver:integer;
@@ -192,14 +201,14 @@ Type
    PUint32 = ^Uint32;
    PByte   = ^Byte;
    PPSDL_Rect = ^PSDL_Rect;
-
-    procedure Rectangle(X1,Y1,X2,Y2:Integer);
-      Begin
-        Line(X1, Y1, X1, Y2);
-        Line(X1, Y2, X2, Y2);
-        Line(X2, Y2, X2, Y1);
-        Line(X2, Y1, X1, Y1);
-      End;
+{   SDLGraph_color = Record
+                     r,g,b,a:Uint8;
+                     i:Integer;
+                     End;
+ }
+{  operator := (col:Integer) z:SDLGraph_color;
+  operator := (col : SDLGraph_color) z: Integer;
+}
 
     Procedure Swap(Var a,b:Integer);
       Begin
@@ -208,46 +217,58 @@ Type
         a:= a - b;
       End;
 
-    operator := (col:Integer) z:SDLGraph_color;
-      Begin
-        z:=EgaColors[col];
-      End;
-
-    operator := (col : SDLGraph_color) z: Integer;
-      Begin
-        z:=col.i mod 16;{that will make colors to be periodical value}
-      End;
-
-    {This 2 procedures will make conversions between SDL and SDLgraph color formats}
-    function SDL_to_SDLgraph(sdlcol:Uint32): SDLgraph_color;
-      Begin
-        SDL_GetRGBA(sdlcol, screen^.format, SDL_to_SDLgraph.r, SDL_to_SDLgraph.g, SDL_to_SDLgraph.b, SDL_to_SDLgraph.a);
-      End;
-
-    function SDLgraph_to_SDL(col:SDLgraph_color): Uint32;
+{Color conversion functions}
+    function RGB_to_GraphColor(r,g,b:Byte):Integer;
       Const max_rgb = 16777216;{2^24}
+      Var dw:Dword;
+      Begin
+        dw:=r shl 16 + g shl 8 + b;
+        dw:=Round(dw/max_rgb*16);
+        RGB_to_GraphColor:=dw;
+      End;
+
+    procedure SDL_to_RGBA(col:Uint32; Var r,g,b,a:Byte);inline;
+      Begin
+        SDL_GetRGBA(col, screen^.format, r,g,b,a);
+      End;
+
+    function SDL_to_GraphColor(col:Uint32):Integer;
+      Var r,g,b:Byte;
+      Begin
+        SDL_GetRGB(col, screen^.format, r,g,b);
+        SDL_to_GraphColor:=RGB_to_GraphColor(r,g,b);
+      End;
+
+    function RGBA_to_SDL(r,g,b,a:Byte): Uint32;
       Var dw:Dword;
       Begin
         if(gdriver=D1bit) then
           Begin
-            if(col.r=255) and (col.g=255) and (col.b=255) then
-              SDLgraph_to_SDL:=SDL_MapRGBA(screen^.format, 255,255,255, col.a)
+            if(r=255) and (g=255) and (b=255) then
+              RGBA_to_SDL:=SDL_MapRGBA(screen^.format, 255,255,255, a)
             else
-              SDLgraph_to_SDL:=SDL_MapRGBA(screen^.format, 0,0,0, col.a);
+              RGBA_to_SDL:=SDL_MapRGBA(screen^.format, 0,0,0, a);
           End
         else if(gdriver=D4bit) then
           Begin
-            dw:=col.r shl 16 + col.g shl 8 + col.b;
-            dw:=Round(dw/max_rgb*16);
+            dw:=RGB_to_GraphColor(r,g,b);
             Writeln('Conversion to 4-bit resulted: ', dw);
-            SDLgraph_to_SDL:=SDL_MapRGBA(screen^.format, EgaColors[dw].r, EgaColors[dw].g, EgaColors[dw].b, col.a);
+            RGBA_to_SDL:=SDL_MapRGBA(screen^.format, EgaColors[dw].r, EgaColors[dw].g, EgaColors[dw].b, a);
           End
         else
-          SDLgraph_to_SDL:=SDL_MapRGBA(screen^.format, col.r, col.g, col.b, col.a);
+          RGBA_to_SDL:=SDL_MapRGBA(screen^.format, r, g, b, a);
       End;
 
+    function GraphColor_to_SDL(i:Integer):Uint32;inline;
+      Begin
+        if(gdriver>=D4bit) then
+          GraphColor_to_SDL:=SDL_MapRGBA(screen^.format, EgaColors[i].r, EgaColors[i].g, EgaColors[i].b, 0)
+        else
+          GraphColor_to_SDL:=0;{Need to do some conversions}
+      End;
+{End of color conversion functions}
+
     procedure PutPixel_NoLock(X,Y: Integer; sdlcolor: Uint32); {local;}register;
-      {Note: This procedure get sdlcolor as drawing value, not sdlgraph_color}
       Var p:PUint8;
           bpp:Uint8;
       Begin
@@ -263,49 +284,66 @@ Type
           End;
       End;
 
-    function GetPixel_sdlcolor(X, Y:Integer):Uint32;
+    procedure   PutPixel(X,Y:Integer; col:Integer);inline;
+      Begin
+        PutPixel_NoLock(X,Y, GraphColor_to_SDL(col));
+      End;
+    procedure   PutPixel(X,Y:Integer; r,g,b,a:Byte);
+      Begin
+        PutPixel_NoLock(X,Y, RGBA_to_SDL(r,g,b,a));
+      End;
+
+    function GetPixel_local(X, Y:Integer):Uint32;
       Var p:PUint8;
           bpp:Uint8;
       Begin
         bpp:=screen^.format^.BytesPerPixel;
         p:= PUint8(screen^.pixels) + Y * screen^.pitch + X * bpp;
         Case bpp of
-          2: GetPixel_sdlcolor:=PUint16(p)^;//SDL_to_SDLgraph(PUint16(p)^);
-          4: GetPixel_sdlcolor:=PUint32(p)^;//SDL_to_SDLgraph(PUint32(p)^);
+          2: GetPixel_local:=PUint16(p)^;//SDL_to_SDLgraph(PUint16(p)^);
+          4: GetPixel_local:=PUint32(p)^;//SDL_to_SDLgraph(PUint32(p)^);
           else
             Writeln('GetPixel: Unknown bpp: ', bpp);
           End;
       End;
 
-    function GetPixel(X, Y:Integer):SDLGraph_color;
+    function GetPixel(X,Y:Integer):Integer;inline;
       Begin
-        GetPixel:=SDL_to_SDLgraph(GetPixel_sdlcolor(X,Y));
+        GetPixel:=SDL_to_GraphColor(GetPixel_local(X,Y));
+      End;
+    procedure GetPixel(X,Y:Integer; Var R,G,B,A:Byte);inline;
+      Begin
+        SDL_to_RGBA(GetPixel_local(X,Y), R,G,B,A);
       End;
 
-(*    procedure BeginDraw;inline;{local;}
-      Begin
-{        must_be_locked:=SDL_MUSTLOCK(screen);
-        if must_be_locked then
-          SDL_LockSurface(screen);
-}      End;
-
-    procedure EndDraw;inline;{local;}
-      Begin
- {       if must_be_locked then
-          SDL_UnlockSurface(screen);
-        SDL_Flip(screen);}
-      End;
-*)
-    procedure SetFillStyle(Pattern:Word; Color:SDLgraph_color);
+    procedure SetFillStyle_local(Pattern:Word; Color:Uint32);
       Begin
         cur_fillpattern:=Pattern;
-        SDLGraph_curfillcolor:=SDLgraph_to_SDL(Color);
+        SDLGraph_curfillcolor:=Color;
       End;
 
-    procedure SetFillPattern(Pattern:FillPatternType; Color:SDLgraph_color);
+    procedure   SetFillStyle(Pattern:Word; Color:Integer);inline;
+      Begin
+        SetFillStyle_local(Pattern, GraphColor_to_SDL(Color));
+      End;
+    procedure   SetFillStyle(Pattern:Word; r,g,b,a:Byte);inline;
+      Begin
+        SetFillStyle_local(Pattern, RGBA_to_SDL(r,g,b,a));
+      End;
+
+    procedure SetFillPattern_local(Pattern:FillPatternType; Color:Uint32);
       Begin
         cur_userfillpattern:=Pattern;
-        SDLGraph_curfillcolor  :=SDLgraph_to_SDL(Color);
+        SDLGraph_curfillcolor  :=Color;
+      End;
+
+    procedure   SetFillPattern(Pattern:FillPatternType; Color:Integer);inline;
+      Begin
+        SetFillPattern_local(Pattern, GraphColor_to_SDL(Color));
+      End;
+    procedure   SetFillPattern(Pattern:FillPatternType; r,g,b,a:Byte);inline;
+      Begin
+        SetFillPattern_local(Pattern, RGBA_to_SDL(r,g,b,a));
       End;
 
     procedure OutTextXY(X,Y:Integer; S:String);
@@ -322,16 +360,16 @@ Type
           in_b:byte;
           pat_arr:Array[0..7] of Array[0..7] of boolean;
           col:Uint32;
-      procedure PutPixel_Local;inline;
+      procedure PutPixel_FloodFill;inline;
         Begin
           if(pat_arr[y mod 8][x mod 8]) then
             Begin
               PutPixel_NoLock(x,y, IC);
             End;
         End;
-      function GetPixel_Local:Uint32;inline;
+      function GetPixel_FloodFill:Uint32;inline;
         Begin
-          GetPixel_Local:=GetPixel_sdlcolor(x,y);
+          GetPixel_FloodFill:=GetPixel_local(x,y);
         End;
 
       begin
@@ -351,71 +389,50 @@ Type
             y:=StackY[Top];
             Writeln('FloodFill_color_pattern: Got point (',x,'; ', y, ')');
             Top:=Top-1;
-            PutPixel_Local;
+            PutPixel_FloodFill;
             xm:=x;
             repeat
-              PutPixel_Local;
+              PutPixel_FloodFill;
               Inc(x);
-            until GetPixel_Local=BC;
+            until GetPixel_FloodFill=BC;
             xr:=x-1;
             x:=xm;
             repeat
-              PutPixel_Local;
+              PutPixel_FloodFill;
               Dec(x);
-            until GetPixel_Local=BC;
+            until GetPixel_FloodFill=BC;
             xl:=x+1;
             j:=1;
             Writeln('FloodFill_color_pattern: X left = ', xl, '; X right = ', xr);
             repeat
               y:=y+j;
               x:=xr;
-{              while x<xr do
+              C:=False;
+              col:=GetPixel_FloodFill;
+              in_b:=0;
+              while (x>xl) do
                 begin
-}                  C:=False;
-                  col:=GetPixel_Local;
-                  in_b:=0;
-                  while (x>xl) do
-                    begin
-(*                      if(in_b=0) then
-                        Begin
-                          if(col=BC) or (col=IC) then
-                            in_b:=1;
-                        End
-                      else if(in_b=1) then
-                        Begin
-                          if(col<>BC) and (col<>IC) then
-                            Begin
-                              C:=True;
-                              break;
-                            End;
-                        End;
-  *)
-                      C:=true;
-                      Dec(x);
-                      col:=GetPixel_Local;
-                    end;
+                  C:=true;
+                  Dec(x);
+                  col:=GetPixel_FloodFill;
+                end;
 
-                  if(x>xr) then
-                    Dec(x);
+              if(x>xr) then
+                Dec(x);
 
-                  if C then
-                    begin
-                      Inc(Top);
-                      StackX[Top]:=x;
-                      StackY[Top]:=y;
-                      Writeln('FloodFill_color_pattern: Pushed new point to stack: (', x, '; ',y, ')');
-                    end;
-{                  repeat
-                    x:=x+1;
-                    col:=GetPixel_Local;
-                  until not((col=BC) or(col=IC) and(x<xr));
-}//                end;
+              if C then
+                begin
+                  Inc(Top);
+                  StackX[Top]:=x;
+                  StackY[Top]:=y;
+                  Writeln('FloodFill_color_pattern: Pushed new point to stack: (', x, '; ',y, ')');
+                end;
               j:=j-3;
             until not(j>=-2);
           end;
       end;
 
-    procedure FloodFill(X, Y:Integer; border:SDLgraph_color);
+    procedure FloodFill_local(X, Y:Integer; border:Uint32);
       Var fill_color:Uint32;
           pat:FillPatternType;
       Begin
@@ -427,7 +444,24 @@ Type
           pat:=cur_userfillpattern
         else
           pat:=PreDefPatterns[cur_fillpattern];
-        FloodFill_color_pattern(X,Y, SDLgraph_to_SDL(border), fill_color, pat);
+        FloodFill_color_pattern(X,Y, border, fill_color, pat);
+      End;
+
+      procedure   FloodFill(X, Y:Integer; border:Integer);inline;
+        Begin
+          FloodFill_local(X,Y, GraphColor_to_SDL(border));
+        End;
+      procedure   FloodFill(X, Y:Integer; r,g,b,a:Byte);inline;
+        Begin
+          FloodFill_local(X,Y, RGBA_to_SDL(r,g,b,a));
+        End;
+
+    procedure Rectangle(X1,Y1,X2,Y2:Integer);
+      Begin
+        Line(X1, Y1, X1, Y2);
+        Line(X1, Y2, X2, Y2);
+        Line(X2, Y2, X2, Y1);
+        Line(X2, Y1, X1, Y1);
       End;
 
     procedure Circle(xc,yc:Integer; Radius:Word);
@@ -509,17 +543,17 @@ Type
                 Case bpp of
                   1:
                     Begin
-                      PUint8(p)^:=SDLgraph_to_SDL(GetPixel(X,Y));
+                      PUint8(p)^:=GetPixel_local(X,Y);
                       Inc(p, 1);
                     End;
                   2:
                     Begin
-                      PUint16(p)^:=SDLgraph_to_SDL(GetPixel(X,Y));
+                      PUint16(p)^:=GetPixel_local(X,Y);
                       Inc(p,  2);
                     End;
                   4:
                     Begin
-                      PUint32(p)^:=SDLgraph_to_SDL(GetPixel(X,Y));
+                      PUint32(p)^:=GetPixel_local(X,Y);
                       Inc(p, 4);
                     End;
                   else
@@ -578,14 +612,6 @@ Type
         SDL_FillRect(screen, Nil, SDLGraph_bgcolor);
       End;
 
-    procedure PutPixel(X,Y: Integer; color: SDLGraph_color);inline;
-      Var dw:Dword;
-      Begin
-        {dw:=SDL_GetTicks;}
-        PutPixel_NoLock(X,Y, SDLgraph_to_SDL(color));
-        {Writeln('PutPixel_NoLock: Time drawing: ', SDL_GetTicks-dw);}
-      End;
-
     procedure Line(X1,Y1, X2, Y2:Integer);
     {Can we use the FPC GRAPH source for fast algorithms for most of our primitives?}
       Var X:Integer;
@@ -626,23 +652,23 @@ Type
           End;
       End;
 
-    procedure SetColor(color:SDLGraph_color);
+    procedure   SetColor(col:Integer);
       Begin
-         SDLGraph_curcolor:=SDLgraph_to_SDL(color);
+        SDLGraph_curcolor:=GraphColor_to_SDL(col);
+      End;
+    procedure   SetColor(r,g,b,a:Byte);
+      Begin
+        SDLGraph_curcolor:=RGBA_to_SDL(r,g,b,a);
       End;
 
-    function GetColor: SDLGraph_color;
+    function    GetColor: Integer;
       Begin
-        GetColor:=SDL_to_SDLgraph(SDLGraph_curcolor);
+        GetColor:=SDL_to_GraphColor(SDLGraph_curcolor);
       End;
-
-    function SDLGraph_MakeColor(r,g,b:Byte):SDLGraph_color;
+    procedure   GetColor(Var r,g,b,a:Byte);
       Begin
-        SDLGraph_MakeColor.r := r;
-        SDLGraph_MakeColor.g := g;
-        SDLGraph_MakeColor.b := b;
+        SDL_to_RGBA(SDLGraph_curcolor, r,g,b,a);
       End;
-
 
     function GetMaxX:Integer;
       Begin
@@ -808,9 +834,9 @@ Type
         screen:=SDL_SetVideoMode(width, height, bpp, SDLGraph_flags);
         SDLGraph_graphresult:=0;
 
-        SDLGraph_bgcolor:=SDLgraph_to_SDL(Black);
+        SDLGraph_bgcolor:=GraphColor_to_SDL(Black);
         Writeln('Default background: ', SDLGraph_bgcolor);
-        SDLGraph_curcolor:=SDLgraph_to_SDL(White);
+        SDLGraph_curcolor:=GraphColor_to_SDL(White);
 
         SDLGraph_curfillcolor:=SDLGraph_curcolor;
 
@@ -905,11 +931,6 @@ Begin
     Begin
       r:=255;b:=255;g:=255;
     End;
-  for c:=0 to 15 do
-    with EgaColors[c] do
-      Begin
-        i:=c;
-        a:=0;
-      End;
+
   cur_fillpattern:=SolidFill;
 End.
