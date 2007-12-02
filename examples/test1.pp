@@ -11,7 +11,7 @@ Begin
   W:=GetMaxX;
   H:=GetMaxY;
   Repeat
-    PutPixel(random(W), random(H), SDLgraph_MakeColor(random($FF), random($FF), random($FF)));
+    PutPixel(random(W), random(H), random($FF), random($FF), random($FF));
   until keypressed;
   CloseGraph;
 End.

@@ -57,7 +57,7 @@ Repeat
     y:=y+v;
     PutImage(x+D*Round(30*sin(y/100)), y, bmp^, 0);
     End;
- Delay(20);
+ Delay(45);
  ClearDevice;
 until keypressed;
 CloseGraph;

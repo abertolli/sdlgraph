@@ -3,6 +3,7 @@
 UNIT SDLGraph;
 
 {$inline on}
+{$MODE OBJFPC}
 
 INTERFACE
 
@@ -100,8 +101,7 @@ Type
 
 
 {GRAPH declarations}
-  procedure   InitGraph (var GraphDriver,GraphMode : integer; const PathToDriver : string);
-  procedure   InitGraph(var GraphDriver,GraphMode : integer);
+  procedure   InitGraph (var GraphDriver,GraphMode : integer; const PathToDriver : string = '');
   procedure   CloseGraph;
   function    GraphResult: SmallInt;
   function    GraphErrorMsg(ErrorCode: SmallInt):String;
@@ -110,13 +110,13 @@ Type
   function    GetMaxY:Integer;
 
   procedure   SetColor(col:Integer);
-  procedure   SetColor(r,g,b,a:Byte);
+  procedure   SetColor(r,g,b:Byte; a:Byte=0);
 
   function    GetColor: Integer;
   procedure   GetColor(Var r,g,b,a:Byte);
 
   procedure   PutPixel(X,Y:Integer; col:Integer);inline;
-  procedure   PutPixel(X,Y:Integer; r,g,b,a:Byte);
+  procedure   PutPixel(X,Y:Integer; r,g,b:Byte; a:Byte = 0);
 
   function    GetPixel(X,Y:Integer):Integer;inline;
   procedure   GetPixel(X,Y:Integer; Var R,G,B,A:Byte);inline;
@@ -261,10 +261,10 @@ Type
 
     function GraphColor_to_SDL(i:Integer):Uint32;inline;
       Begin
-        if(gdriver>=D4bit) then
+        //if(gdriver>=D4bit) then
           GraphColor_to_SDL:=SDL_MapRGBA(screen^.format, EgaColors[i].r, EgaColors[i].g, EgaColors[i].b, 0)
-        else
-          GraphColor_to_SDL:=0;{Need to do some conversions}
+//        else
+//          GraphColor_to_SDL:=0;{Need to do some conversions}
       End;
 {End of color conversion functions}
 
@@ -288,7 +288,7 @@ Type
       Begin
         PutPixel_NoLock(X,Y, GraphColor_to_SDL(col));
       End;
-    procedure   PutPixel(X,Y:Integer; r,g,b,a:Byte);
+    procedure   PutPixel(X,Y:Integer; r,g,b:Byte; a:Byte);
       Begin
         PutPixel_NoLock(X,Y, RGBA_to_SDL(r,g,b,a));
       End;
@@ -353,11 +353,9 @@ Type
 
     procedure FloodFill_color_pattern(X0,Y0:word; BC, IC:Uint32;pattern:FillPatternType);
       Var StackX, StackY:Array of word;
-          x,y,xm,xr,xl:word;
-          j:Integer;
+          x,y:word;
           Top, StackSize:LongInt;
-          C:boolean;
-          in_b:byte;
+          i:Byte;
           pat_arr:Array[0..7] of Array[0..7] of boolean;
           col:Uint32;
       procedure PutPixel_FloodFill;inline;
@@ -367,11 +365,12 @@ Type
               PutPixel_NoLock(x,y, IC);
             End;
         End;
-      function GetPixel_FloodFill:Uint32;inline;
+      procedure Push(px,py:word);inline;
         Begin
-          GetPixel_FloodFill:=GetPixel_local(x,y);
+          Inc(Top);
+          StackX[Top]:=px;
+          StackY[Top]:=py;
         End;
-
       begin
         Writeln('FloodFill_color_pattern: Border color: ', BC);
         for y:=0 to 7 do
@@ -380,55 +379,34 @@ Type
         StackSize:= screen^.w * screen^.h;
         SetLength(StackX, StackSize);
         SetLength(StackY, StackSize);
-        Top:=0;
-        StackX[Top]:=x0;
-        StackY[Top]:=y0;
+        Top:=-1;
+        Push(x0, y0);
         while Top<>-1 do
           begin
             x:=StackX[Top];
             y:=StackY[Top];
             Writeln('FloodFill_color_pattern: Got point (',x,'; ', y, ')');
-            Top:=Top-1;
+            Dec(Top);
             PutPixel_FloodFill;
-            xm:=x;
-            repeat
-              PutPixel_FloodFill;
-              Inc(x);
-            until GetPixel_FloodFill=BC;
-            xr:=x-1;
-            x:=xm;
-            repeat
-              PutPixel_FloodFill;
-              Dec(x);
-            until GetPixel_FloodFill=BC;
-            xl:=x+1;
-            j:=1;
-            Writeln('FloodFill_color_pattern: X left = ', xl, '; X right = ', xr);
-            repeat
-              y:=y+j;
-              x:=xr;
-              C:=False;
-              col:=GetPixel_FloodFill;
-              in_b:=0;
-              while (x>xl) do
-                begin
-                  C:=true;
-                  Dec(x);
-                  col:=GetPixel_FloodFill;
-                end;
-
-              if(x>xr) then
-                Dec(x);
-
-              if C then
-                begin
-                  Inc(Top);
-                  StackX[Top]:=x;
-                  StackY[Top]:=y;
-                  Writeln('FloodFill_color_pattern: Pushed new point to stack: (', x, '; ',y, ')');
-                end;
-              j:=j-3;
-            until not(j>=-2);
+            for i:=1 to 4 do
+              Begin
+                case i of
+                  1:
+                    Inc(x);
+                  2:
+                    Dec(x,2);
+                  3:
+                    Begin
+                      Inc(x);
+                      Inc(y);
+                    End;
+                  4:
+                    Dec(y, 2);
+                  End;
+                col:=GetPixel_local(x,y);
+                if(col<>IC) and (col<>BC) then
+                  Push(x,y);
+              End;
           end;
       end;
 
@@ -767,11 +745,6 @@ Type
             {SDL_LockSurface(screen);}
           End;
         DrawThread:=0;
-      End;
-
-    Procedure InitGraph(var GraphDriver,GraphMode : integer);
-      Begin
-        InitGraph(GraphDriver, GraphMode, '');
       End;
 
     Procedure InitGraph(var GraphDriver,GraphMode : integer; const PathToDriver : string);

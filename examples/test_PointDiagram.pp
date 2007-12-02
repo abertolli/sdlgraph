@@ -62,7 +62,7 @@ Line(0, OsY, W, OsY);
 Line(W, OsY, W-5, OsY-5);
 Line(W, OsY, W-5, OsY+5);
 Pitch:=(W-Tab) div Numbers;
-SetFillStyle(SolidFill, Brown);
+SetFillStyle(SolidFill, Red);
 for i:=1 to Numbers do
  Begin
  SetColor(Green);

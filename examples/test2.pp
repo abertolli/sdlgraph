@@ -10,7 +10,7 @@ Begin
   W:=GetMaxX;
   H:=GetMaxY;
   Repeat
-    SetColor(SDLgraph_MakeColor(random($FF), random($FF), random($FF)));
+    SetColor(random($FF), random($FF), random($FF));
     Line(random(W), random(H), random(W), random(H));
   until keypressed;
   CloseGraph;
