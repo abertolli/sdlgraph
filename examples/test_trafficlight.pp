@@ -13,7 +13,7 @@ Begin
   //We don't have enough functions, to write this example
   Rectangle(W div 2 -Tab, H div 2 -3*Tab, W div 2 + Tab, H div 2 + 3*Tab);
   SetColor(Red);
-  SetFillStyle(SolidFill, Red);
+  SetFillStyle(LineFill, Red);
   Circle(W div 2, H div 2 - 2*Tab, Round(Tab*0.9));
   FloodFill(W div 2, H div 2 - 2*Tab, Red);
 

@@ -112,6 +112,9 @@ Type
   procedure   SetColor(col:Integer);
   procedure   SetColor(r,g,b:Byte; a:Byte=0);
 
+  procedure   SetBkColor(col:Integer);
+  procedure   SetBkColor(r,g,b:Byte; a:Byte=0);
+
   function    GetColor: Integer;
   procedure   GetColor(Var r,g,b,a:Byte);
 
@@ -637,6 +640,15 @@ Type
     procedure   SetColor(r,g,b,a:Byte);
       Begin
         SDLGraph_curcolor:=RGBA_to_SDL(r,g,b,a);
+      End;
+
+    procedure   SetBkColor(col:Integer);
+      Begin
+        SDLGraph_bgcolor:=GraphColor_to_SDL(col);
+      End;
+    procedure   SetBkColor(r,g,b:Byte; a:Byte=0);
+      Begin
+        SDLGraph_bgcolor:=RGBA_to_SDL(r,g,b,a);
       End;
 
     function    GetColor: Integer;
