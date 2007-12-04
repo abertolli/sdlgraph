@@ -356,23 +356,35 @@ Type
 
     procedure FloodFill_color_pattern(X0,Y0:word; BC, IC:Uint32;pattern:FillPatternType);
       Var StackX, StackY:Array of word;
-          x,y:word;
-          Top, StackSize:LongInt;
-          i:Byte;
+          StackSize:LongInt;
+          Top:LongInt = 0;
           pat_arr:Array[0..7] of Array[0..7] of boolean;
-          col:Uint32;
+          x,x1,y:word;
+          SpanUp, SpanDown:Boolean;
       procedure PutPixel_FloodFill;inline;
         Begin
-          if(pat_arr[y mod 8][x mod 8]) then
+          if(pat_arr[y mod 8][x1 mod 8]) then
             Begin
-              PutPixel_NoLock(x,y, IC);
+              PutPixel_NoLock(x1,y, IC);
             End;
+        End;
+      function Pop(Var x,y:Word):Boolean;inline;
+        Begin
+          if(Top>0) then
+            Begin
+              Dec(Top);
+              x:=StackX[Top];
+              y:=StackY[Top];
+              Pop:=true;
+            End
+          else
+            Pop:=false;
         End;
       procedure Push(px,py:word);inline;
         Begin
-          Inc(Top);
           StackX[Top]:=px;
           StackY[Top]:=py;
+          Inc(Top);
         End;
       begin
         Writeln('FloodFill_color_pattern: Border color: ', BC);
@@ -382,35 +394,41 @@ Type
         StackSize:= screen^.w * screen^.h;
         SetLength(StackX, StackSize);
         SetLength(StackY, StackSize);
-        Top:=-1;
         Push(x0, y0);
-        while Top<>-1 do
-          begin
-            x:=StackX[Top];
-            y:=StackY[Top];
-            Writeln('FloodFill_color_pattern: Got point (',x,'; ', y, ')');
-            Dec(Top);
-            PutPixel_FloodFill;
-            for i:=1 to 4 do
+
+        While Pop(x,y) do
+          Begin
+            x1:=x;
+            while(x1>=0) and (GetPixel_local(x1,y)<>BC) do
+              Dec(x1);
+            Inc(x1);
+            SpanUp:=false;
+            SpanDown:=false;
+            while(x1 < screen^.w) and (GetPixel_local(x1, y) <>BC) do
               Begin
-                case i of
-                  1:
-                    Inc(x);
-                  2:
-                    Dec(x,2);
-                  3:
-                    Begin
-                      Inc(x);
-                      Inc(y);
-                    End;
-                  4:
-                    Dec(y, 2);
+                PutPixel_FloodFill;
+                if(not SpanUp) and (y > 0) and (GetPixel_local(x1, y-1) <> BC) then
+                  Begin
+                    Push(x1, y - 1);
+                    SpanUp := true;
+                  End
+                else if(SpanUp) and (y > 0) and (GetPixel_local(x1, y-1) = BC) then
+                  Begin
+                    SpanUp := false;
                   End;
-                col:=GetPixel_local(x,y);
-                if(col<>IC) and (col<>BC) then
-                  Push(x,y);
+                if(not SpanDown) and (y < screen^.h - 1) and (GetPixel_local(x1, y+1) <> BC) then
+                  Begin
+                    push(x1, y + 1);
+                    SpanDown := true;
+                  End
+                else if(SpanDown) and (y < screen^.h - 1) and (GetPixel_local(x1, y+1) = BC) then
+                  Begin
+                    SpanDown := false;
+                  End;
+                Inc(x1);
               End;
-          end;
+          End;
+
       end;
 
     procedure FloodFill_local(X, Y:Integer; border:Uint32);
