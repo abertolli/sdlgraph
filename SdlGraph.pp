@@ -160,17 +160,17 @@ Uses SDL, SDL_video, SDL_timer, SdlGraph_Crt
 Const
    PreDefPatterns:Array[0..11] of FillPatternType =
     (($FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF),{EmptyFill}
-    ($FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF),{SolidFill}
-    ($FF, 0,   $FF, 0,   $FF, 0,   $FF, 0  ),{LineFill}
-    (0,   0,   0,   0,   0,   0,   0,   0  ),{LtSlashFill}
-    (0,   0,   0,   0,   0,   0,   0,   0  ),{SlashFill}
-    (0,   0,   0,   0,   0,   0,   0,   0  ),{BkSlashFill}
-    (0,   0,   0,   0,   0,   0,   0,   0  ),{LtBkSlashFill}
-    (0,   0,   0,   0,   0,   0,   0,   0  ),{HatchFill}
-    (0,   0,   0,   0,   0,   0,   0,   0  ),{XHatchFill}
-    (0,   0,   0,   0,   0,   0,   0,   0  ),{InterLeaveFill}
-    (0,   0,   0,   0,   0,   0,   0,   0  ),{WideDotFill}
-    (0,   0,   0,   0,   0,   0,   0,   0  ){CloseDotFill}
+     ($FF, $FF, $FF, $FF, $FF, $FF, $FF, $FF),{SolidFill}
+     ($FF, $FF,   0,   0, $FF, $FF,   0, 0  ),{LineFill}
+     ($80, $40, $20, $10, $08, $04, $02, $01),{LtSlashFill}
+     ($83, $C1, $E0, $70, $38, $1C, $0E, $07),{SlashFill}
+     ($07, $0E, $1C, $38, $70, $E0, $C1, $83),{BkSlashFill}
+     ($01, $02, $04, $08, $10, $20, $40, $80),{LtBkSlashFill}
+     ($FF, $88, $88, $88, $FF, $88, $88, $88),{HatchFill}
+     ($81, $42, $24, $18, $18, $24, $42, $81),{XHatchFill}
+     ($CC, $33, $CC, $33, $CC, $33, $CC, $33),{InterLeaveFill}
+     ($80,   0,  $8,   0, $80,   0,  $8,   0  ),{WideDotFill}
+     ($88,   0,  $22,  0, $88,   0, $22,   0  ){CloseDotFill}
     );
 
 Var
@@ -361,6 +361,7 @@ Type
           pat_arr:Array[0..7] of Array[0..7] of boolean;
           x,x1,y:word;
           SpanUp, SpanDown:Boolean;
+          col:Uint32;
       procedure PutPixel_FloodFill;inline;
         Begin
           if(pat_arr[y mod 8][x1 mod 8]) then
@@ -376,6 +377,7 @@ Type
               x:=StackX[Top];
               y:=StackY[Top];
               Pop:=true;
+              Writeln('FloodFill_color_pattern: Poped value (',x,'; ', y, ')');
             End
           else
             Pop:=false;
@@ -385,7 +387,63 @@ Type
           StackX[Top]:=px;
           StackY[Top]:=py;
           Inc(Top);
+          Writeln('FloodFill_color_pattern: Pushed value (',px,'; ', py, ')');
         End;
+
+      procedure CheckUp;inline;
+        Begin
+          if(not SpanUp) and (y > 0) and (GetPixel_local(x1, y-1) <> BC) then
+            Begin
+              Push(x1, y - 1);
+              SpanUp := true;
+            End
+          else if(SpanUp) and (y > 0) and (GetPixel_local(x1, y-1) = BC) then
+            Begin
+              SpanUp := false;
+            End;
+        End;
+
+      procedure CheckDown;inline;
+        Begin
+          if(not SpanDown) and (y < screen^.h - 1) and (GetPixel_local(x1, y+1) <> BC) then
+            Begin
+              push(x1, y + 1);
+              SpanDown := true;
+            End
+          else if(SpanDown) and (y < screen^.h - 1) and (GetPixel_local(x1, y+1) = BC) then
+            Begin
+              SpanDown := false;
+            End;
+        End;
+
+      procedure GoScanning(up:Boolean);
+        Begin
+          While Pop(x,y) do
+            Begin
+              x1:=x;
+              col:=GetPixel_local(x1,y);
+              while(x1>=0) and (col<>BC) and (col<>IC) do
+                Begin
+                  Dec(x1);
+                  col:=GetPixel_local(x1,y);
+                End;
+              Inc(x1);
+              if(up) then
+                SpanUp:=false
+              else
+                SpanDown:=false;
+              while(x1 < screen^.w) and (GetPixel_local(x1, y) <>BC) do
+                Begin
+                  PutPixel_FloodFill;
+                  if(up) then
+                    CheckUp
+                  else
+                    CheckDown;
+                  Inc(x1);
+                End;
+            End;
+        End;
+
       begin
         Writeln('FloodFill_color_pattern: Border color: ', BC);
         for y:=0 to 7 do
@@ -395,40 +453,11 @@ Type
         SetLength(StackX, StackSize);
         SetLength(StackY, StackSize);
         Push(x0, y0);
-
-        While Pop(x,y) do
-          Begin
-            x1:=x;
-            while(x1>=0) and (GetPixel_local(x1,y)<>BC) do
-              Dec(x1);
-            Inc(x1);
-            SpanUp:=false;
-            SpanDown:=false;
-            while(x1 < screen^.w) and (GetPixel_local(x1, y) <>BC) do
-              Begin
-                PutPixel_FloodFill;
-                if(not SpanUp) and (y > 0) and (GetPixel_local(x1, y-1) <> BC) then
-                  Begin
-                    Push(x1, y - 1);
-                    SpanUp := true;
-                  End
-                else if(SpanUp) and (y > 0) and (GetPixel_local(x1, y-1) = BC) then
-                  Begin
-                    SpanUp := false;
-                  End;
-                if(not SpanDown) and (y < screen^.h - 1) and (GetPixel_local(x1, y+1) <> BC) then
-                  Begin
-                    push(x1, y + 1);
-                    SpanDown := true;
-                  End
-                else if(SpanDown) and (y < screen^.h - 1) and (GetPixel_local(x1, y+1) = BC) then
-                  Begin
-                    SpanDown := false;
-                  End;
-                Inc(x1);
-              End;
-          End;
-
+        GoScanning(true);{Go scanning lines up}
+        Top:=0;
+        Push(x0,y0+1);
+        GoScanning(false);{Then, go scanning down}
+        {Scanning directions separation prevents endless looping and make the program to perform every line checking only once}
       end;
 
     procedure FloodFill_local(X, Y:Integer; border:Uint32);
