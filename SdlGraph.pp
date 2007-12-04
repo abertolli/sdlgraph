@@ -91,6 +91,9 @@ Const
    CloseDotFill=11;
    UserFill=12;
 
+{Bar3D constants}
+  TopOn=true;
+  TopOff=false;
 
 Type
   FillPatternType  = Array[1..8] of Byte;
@@ -124,7 +127,14 @@ Type
   function    GetPixel(X,Y:Integer):Integer;inline;
   procedure   GetPixel(X,Y:Integer; Var R,G,B,A:Byte);inline;
 
+  procedure   MoveTo(X, Y:Integer);
+  function    GetX:Integer;
+  function    GetY:Integer;
+
   procedure   Line(X1,Y1, X2, Y2:Integer);
+  procedure   LineTo(X, Y:Integer);
+  procedure   LineRel(dX, dY:Integer);
+
   procedure   OutTextXY(X,Y:Integer; S:String);
 
   procedure   SetFillStyle(Pattern:Word; Color:Integer);inline;
@@ -138,6 +148,10 @@ Type
 
   procedure   Circle(xc,yc:Integer; Radius:Word);
   procedure   Rectangle(X1,Y1,X2,Y2:Integer);
+
+  procedure   Bar(X1, Y1, X2, Y2:Integer);
+  procedure   Bar3D(X1, Y1, X2, Y2:Integer; Depth:Word; Top:Boolean);
+
   function    TextWidth(S:String):Word;
   function    TextHeight(S:String):Word;
   function    ImageSize(X1,Y1, X2,Y2:Integer):Integer;
@@ -180,6 +194,9 @@ Var
    SDLGraph_curcolor,
    SDLGraph_bgcolor,
    SDLGraph_curfillcolor:Uint32;
+   GraphicCursor:Record
+                   X,Y:Integer;
+                   End;
    cur_fillpattern:word;
    cur_userfillpattern :FillPatternType;
 
@@ -204,14 +221,29 @@ Type
    PUint32 = ^Uint32;
    PByte   = ^Byte;
    PPSDL_Rect = ^PSDL_Rect;
-{   SDLGraph_color = Record
-                     r,g,b,a:Uint8;
-                     i:Integer;
-                     End;
- }
-{  operator := (col:Integer) z:SDLGraph_color;
-  operator := (col : SDLGraph_color) z: Integer;
-}
+
+
+    procedure   MoveTo(X, Y:Integer);
+      Begin
+        if(X<0) then
+          X:=0
+        else if(X>=screen^.w) then
+          X:= screen^.w-1;
+        if(Y<0) then
+          Y:=0
+        else if(Y>=screen^.h) then
+          Y:= screen^.h-1;
+        GraphicCursor.X:=X;
+        GraphicCursor.Y:=Y;
+      End;
+    function    GetX:Integer;
+      Begin
+        GetX:= GraphicCursor.X;
+      End;
+    function    GetY:Integer;
+      Begin
+        GetY:=GraphicCursor.Y;
+      End;
 
     Procedure Swap(Var a,b:Integer);
       Begin
@@ -271,27 +303,32 @@ Type
       End;
 {End of color conversion functions}
 
-    procedure PutPixel_NoLock(X,Y: Integer; sdlcolor: Uint32); {local;}register;
+    procedure PutPixel_Surface(X,Y:Integer; sdlcolor:Uint32; surf:PSDL_Surface);
       Var p:PUint8;
           bpp:Uint8;
       Begin
-        if(X<0) or (X>=screen^.w) or (Y<0) or (Y>=screen^.h) then
+        if(X<0) or (X>=surf^.w) or (Y<0) or (Y>=surf^.h) then
           Exit;
-        bpp:=screen^.format^.BytesPerPixel;
-        p:= PUint8(screen^.pixels) + Y * screen^.pitch + X * bpp;
+        bpp:=surf^.format^.BytesPerPixel;
+        p:= PUint8(surf^.pixels) + Y * surf^.pitch + X * bpp;
         Case bpp of
           2: PUint16(p)^:=sdlcolor;
           3,4: PUint32(p)^:=sdlcolor;
           else
-            Writeln('PutPixel_NoLock: Unknown bpp: ', bpp);
+            Writeln('PutPixel_Surface: Unknown bpp: ', bpp);
           End;
+      End;
+
+    procedure PutPixel_NoLock(X,Y: Integer; sdlcolor: Uint32);inline;
+      Begin
+        PutPixel_Surface(X,Y, sdlcolor, screen);
       End;
 
     procedure   PutPixel(X,Y:Integer; col:Integer);inline;
       Begin
         PutPixel_NoLock(X,Y, GraphColor_to_SDL(col));
       End;
-    procedure   PutPixel(X,Y:Integer; r,g,b:Byte; a:Byte);
+    procedure   PutPixel(X,Y:Integer; r,g,b:Byte; a:Byte);inline;
       Begin
         PutPixel_NoLock(X,Y, RGBA_to_SDL(r,g,b,a));
       End;
@@ -354,7 +391,8 @@ Type
         Writeln('OutTextXY: stub');
       End;
 
-    procedure FloodFill_color_pattern(X0,Y0:word; BC, IC:Uint32;pattern:FillPatternType);
+    procedure FloodFill_color_pattern_surface(X0,Y0:word; BC, IC:Uint32;pattern:FillPatternType; surf:PSDL_Surface);
+    {This function fills rect on surface, with color IC and border color BC, using pattern}
       Var StackX, StackY:Array of word;
           StackSize:LongInt;
           Top:LongInt = 0;
@@ -366,7 +404,7 @@ Type
         Begin
           if(pat_arr[y mod 8][x1 mod 8]) then
             Begin
-              PutPixel_NoLock(x1,y, IC);
+              PutPixel_Surface(x1,y, IC, surf);
             End;
         End;
       function Pop(Var x,y:Word):Boolean;inline;
@@ -377,7 +415,6 @@ Type
               x:=StackX[Top];
               y:=StackY[Top];
               Pop:=true;
-              Writeln('FloodFill_color_pattern: Poped value (',x,'; ', y, ')');
             End
           else
             Pop:=false;
@@ -387,7 +424,6 @@ Type
           StackX[Top]:=px;
           StackY[Top]:=py;
           Inc(Top);
-          Writeln('FloodFill_color_pattern: Pushed value (',px,'; ', py, ')');
         End;
 
       procedure CheckUp;inline;
@@ -398,22 +434,18 @@ Type
               SpanUp := true;
             End
           else if(SpanUp) and (y > 0) and (GetPixel_local(x1, y-1) = BC) then
-            Begin
               SpanUp := false;
-            End;
         End;
 
       procedure CheckDown;inline;
         Begin
-          if(not SpanDown) and (y < screen^.h - 1) and (GetPixel_local(x1, y+1) <> BC) then
+          if(not SpanDown) and (y < surf^.h - 1) and (GetPixel_local(x1, y+1) <> BC) then
             Begin
               push(x1, y + 1);
               SpanDown := true;
             End
-          else if(SpanDown) and (y < screen^.h - 1) and (GetPixel_local(x1, y+1) = BC) then
-            Begin
+          else if(SpanDown) and (y < surf^.h - 1) and (GetPixel_local(x1, y+1) = BC) then
               SpanDown := false;
-            End;
         End;
 
       procedure GoScanning(up:Boolean);
@@ -422,7 +454,7 @@ Type
             Begin
               x1:=x;
               col:=GetPixel_local(x1,y);
-              while(x1>=0) and (col<>BC) and (col<>IC) do
+              while(x1>0) and (col<>BC) and (col<>IC) do
                 Begin
                   Dec(x1);
                   col:=GetPixel_local(x1,y);
@@ -432,7 +464,7 @@ Type
                 SpanUp:=false
               else
                 SpanDown:=false;
-              while(x1 < screen^.w) and (GetPixel_local(x1, y) <>BC) do
+              while(x1 < surf^.w) and (GetPixel_local(x1, y) <>BC) do
                 Begin
                   PutPixel_FloodFill;
                   if(up) then
@@ -445,11 +477,11 @@ Type
         End;
 
       begin
-        Writeln('FloodFill_color_pattern: Border color: ', BC);
+        Writeln('FloodFill_color_pattern_surface: Border color: ', BC);
         for y:=0 to 7 do
           for x:=0 to 7 do
             pat_arr[y][x] := boolean(pattern[y+1] and ($01 shl x));
-        StackSize:= screen^.w * screen^.h;
+        StackSize:= surf^.w * surf^.h;
         SetLength(StackX, StackSize);
         SetLength(StackY, StackSize);
         Push(x0, y0);
@@ -460,7 +492,12 @@ Type
         {Scanning directions separation prevents endless looping and make the program to perform every line checking only once}
       end;
 
-    procedure FloodFill_local(X, Y:Integer; border:Uint32);
+    {procedure FloodFill_color_pattern(X0,Y0:word; BC, IC:Uint32;pattern:FillPatternType);inline;
+      Begin
+        FloodFill_color_pattern_surface(X0,Y0, BC, IC, pattern, surf);
+      End;
+}
+    procedure FloodFill_local_surface(X, Y:Integer; border:Uint32; surf:PSDL_Surface);
       Var fill_color:Uint32;
           pat:FillPatternType;
       Begin
@@ -472,17 +509,93 @@ Type
           pat:=cur_userfillpattern
         else
           pat:=PreDefPatterns[cur_fillpattern];
-        FloodFill_color_pattern(X,Y, border, fill_color, pat);
+        FloodFill_color_pattern_surface(X,Y, border, fill_color, pat, surf);
       End;
 
       procedure   FloodFill(X, Y:Integer; border:Integer);inline;
         Begin
-          FloodFill_local(X,Y, GraphColor_to_SDL(border));
+          FloodFill_local_surface(X,Y, GraphColor_to_SDL(border), screen);
         End;
       procedure   FloodFill(X, Y:Integer; r,g,b,a:Byte);inline;
         Begin
-          FloodFill_local(X,Y, RGBA_to_SDL(r,g,b,a));
+          FloodFill_local_surface(X,Y, RGBA_to_SDL(r,g,b,a), screen);
         End;
+
+    procedure   Bar(X1, Y1, X2, Y2:Integer);
+      Var tmpsurf:PSDL_Surface;
+          rect:SDL_Rect;
+      Begin
+        Writeln('Bar: X1=', X1);
+        Writeln('     Y1=', Y1);
+        Writeln('     X2=', X2);
+        Writeln('     Y2=', Y2);
+        tmpsurf:=SDL_CreateRGBSurface(SDL_HWSURFACE or SDL_SRCCOLORKEY, Abs(X2-X1), Abs(Y2-Y1), screen^.format^.BitsPerPixel, 0,0,0,0);
+
+        FloodFill_local_surface(0,0, $FFFFFF, tmpsurf);
+        if(X1>X2) then
+          rect.x:=X2
+        else
+          rect.x:=X1;
+
+        if(Y1>Y2) then
+          rect.y:=Y2
+        else
+          rect.y:=Y1;
+        Writeln('Bar: X=', rect.X);
+        Writeln('     Y=', rect.Y);
+        SDL_BlitSurface(tmpsurf, Nil, screen, @rect);
+      End;
+
+    procedure   Bar3D(X1, Y1, X2, Y2:Integer; Depth:Word; Top:Boolean);
+      Var LeftUp, RightUp, RightDown: Record
+                                        x,y:Integer;
+                                        End;
+          Delta:Integer;
+          cur_x, cur_y:Integer;
+      Begin
+        cur_x:=GetX;
+        cur_y:=GetY;
+        Bar(X1,Y1, X2, Y2);
+        Rectangle(X1, Y1, X2, Y2);
+        if(X1>X2) then
+          Begin
+            Swap(X1, X2);
+            Swap(Y1, Y2);
+          End;
+        if(Y2>Y1) then
+          Begin
+            LeftUp.X:=X1;
+            LeftUp.Y:=Y1;
+            RightDown.X:=X2;
+            RightDown.Y:=Y2;
+            RightUp.X:=X2;
+            RightUp.Y:=Y1;
+          End
+        else
+          Begin
+            LeftUp.X:=X1;
+            LeftUp.Y:=Y2;
+            RightUp.X:=X2;
+            RightUp.Y:=Y2;
+            RightDown.X:=X2;
+            RightDown.Y:=Y1;
+          End;
+        if(Depth>0) then
+          Begin
+            Delta:= Round(Depth / sqrt(2));
+            MoveTo(RightDown.X, RightDown.Y);
+            LineRel(Delta, -Delta);
+            LineRel(0, RightUp.Y-RightDown.Y);
+            if(Top=TopOn) then
+              Begin
+                LineRel(LeftUp.X-RightUp.X, 0);
+                LineRel(-Delta, Delta);
+                MoveTo(RightUp.X, RightUp.Y);
+                LineRel(Delta, -Delta);
+              End;
+          End;
+        MoveTo(cur_x, cur_y);
+      End;
 
     procedure Rectangle(X1,Y1,X2,Y2:Integer);
       Begin
@@ -678,6 +791,18 @@ Type
             for X:=Y2 downto Y1 do
               PutPixel_NoLock(X1+Round((X-Y1)*(X2-X1)/(Y2-Y1)), X, SDLGraph_curcolor);
           End;
+      End;
+
+    procedure   LineTo(X, Y:Integer);
+      Begin
+        Line(GraphicCursor.X, GraphicCursor.Y, X, Y);
+        MoveTo(X,Y);
+      End;
+    procedure   LineRel(dX, dY:Integer);
+      Begin
+        Line(GraphicCursor.X, GraphicCursor.Y, GraphicCursor.X+dX, GraphicCursor.Y+dY);
+        Inc(GraphicCursor.X, dX);
+        Inc(GraphicCursor.Y, dY);
       End;
 
     procedure   SetColor(col:Integer);
