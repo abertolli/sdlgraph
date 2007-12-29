@@ -53,6 +53,9 @@ Const
    lowNewMode = 30001;
    highNewMode = 30015;
 
+{Graph operations control}
+   grOk = 0;
+
 {PutImage constants: not used}
    NormalPut=0;
    XORPut   =0;
@@ -147,6 +150,7 @@ Type
   procedure   FloodFill(X, Y:Integer; r,g,b,a:Byte);inline;
 
   procedure   Circle(xc,yc:Integer; Radius:Word);
+  procedure   Arc(XC,YC:Integer; StAngle, EndAngle, Radius:Word);
   procedure   Rectangle(X1,Y1,X2,Y2:Integer);
 
   procedure   Bar(X1, Y1, X2, Y2:Integer);
@@ -620,19 +624,88 @@ Type
           putpixel_NoLock(-y+xc,x+yc,SDLGraph_curcolor);
         end;
       begin
-        d:=3-2*y;
+        d:=3-2*Radius;
         x:=0;
         y:=Radius;
         while(x <= y) do
           begin
-          sim(x,y);
-          if d<0    then d:=d+4*x+6
-          else begin
-          d:=d+4*(x-y)+10;
-          dec(y)
+            sim(x,y);
+            if d<0    then
+              Inc(d, 4*x+6)
+            else
+              begin
+                Inc(d, 4*(x-y)+10);
+                dec(y);
+              end;
+            inc(x)
           end;
-        inc(x)
+      end;
+
+    procedure   Arc(XC,YC:Integer; StAngle, EndAngle, Radius:Word);
+      procedure sim(x,y:integer);
+        Var angle:Integer;
+        begin
+          Writeln('sim call');
+          Writeln('X=', x);
+          Writeln('Y=', y);
+          if x=0 then
+            angle:=90
+          else
+            angle:=Round(arctan(y/x)*180/pi);
+        // draw the circle points as long as they lie in the range specified
+          if (x < y) then
+            Begin
+              Writeln('Angle=', angle);
+              // draw point in range 0 to 45 degrees
+              if (90 - angle >= StAngle) and (90 - angle <= endAngle) then
+                  PutPixel_NoLock(XC + y, YC - x,SDLGraph_curcolor);
+
+              // draw point in range 45 to 90 degrees
+              if (angle >= StAngle) and (angle <= endAngle) then
+                  PutPixel_NoLock( XC + x, YC - y,SDLGraph_curcolor);
+
+              // draw point in range 90 to 135 degrees
+              if (180 - angle >= StAngle) and (180 - angle <= endAngle) then
+                  PutPixel_NoLock( XC - x, YC - y,SDLGraph_curcolor);
+
+              // draw point in range 135 to 180 degrees
+              if (angle + 90 >= StAngle) and (angle + 90 <= endAngle) then
+                  PutPixel_NoLock( XC - y, YC - x,SDLGraph_curcolor);
+
+              // draw point in range 180 to 225 degrees
+              if (270 - angle >= StAngle) and (270 - angle <= endAngle) then
+                  PutPixel_NoLock( XC - y, YC + x,SDLGraph_curcolor);
+
+              // draw point in range 225 to 270 degrees
+              if (angle + 180 >= StAngle) and (angle + 180 <= endAngle) then
+                  PutPixel_NoLock( XC - x, YC + y,SDLGraph_curcolor);
+
+              // draw point in range 270 to 315 degrees
+              if (360 - angle >= StAngle) and (360 - angle <= endAngle) then
+                  PutPixel_NoLock( XC + x, YC + y,SDLGraph_curcolor);
+
+              // draw point in range 315 to 360 degrees
+              if (angle + 270 >= StAngle) and (angle + 270 <= endAngle) then
+                  PutPixel_NoLock( XC + y, YC + x,SDLGraph_curcolor);
+            End;
         end;
+      var x,y,d:integer;
+      begin
+        d:=5-4*Radius;
+        x:=0;
+        y:=Radius;
+        while(x <= y) do
+          begin
+            sim(x,y);
+            if d<0    then
+              Inc(d, 8*x+4)
+            else
+              begin
+                Inc(d, 8*(x-y)+4);
+                dec(y);
+              end;
+            inc(x)
+          end;
       end;
 
     function TextWidth(S:String):Word;
