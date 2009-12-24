@@ -1,0 +1,33 @@
+The GRAPH unit implementation that is already in Freepascal is inadequate,
+and there are no plans to improve it, as for the most part it is largely
+unused.  Some of the major shortcomings of this version of GRAPH include:
+A) on Windows, the input console is separate from the output graphic
+console, and B) on Linux it is implemented using svgalib which requires it
+to be run as root (direct access to the screen)!  A is bad, B is worse.
+
+However another powerful graphics package (SDL) has been ported to
+Freepascal, and after taking a look, I decided that an interface to allow
+GRAPH unit syntax could be placed on top of this.  The purpose of this is
+not to promote the old GRAPH unit for new projects, but to allow older
+projects written on Turbo Pascal using the GRAPH unit to become more
+available on current operating systems without having to rewrite the GRAPH
+portions.
+
+The sdlgraph project will be written using Freepascal and SDL4Freepascal,
+and will work towards implementing the GRAPH unit.  I have already gone
+through some preliminary steps of examining the defined specs of the GRAPH
+unit as it should be implemented in Freepascal, however there is still
+some planning to be done.
+
+
+I have had an interest in creating an sdlgraph unit for a while, and have
+been planning for a few months.  I didn't really know that there was other
+talk about this, although I suspected it.  So today, I looked around and
+saw some interest, and this listed as a project.
+
+I am starting this project.  Whether or not it will be good enough to be
+included in the official fpc is yet to be seen.  But I just wanted to
+announce that I will be working on a graph unit implementation using sdl.
+Any comments are welcome.
+
+
