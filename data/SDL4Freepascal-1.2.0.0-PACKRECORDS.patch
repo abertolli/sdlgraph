@@ -1,0 +1,142 @@
+diff -urN SDL4Freepascal-1.2.0.0/build.sh SDL4Freepascal-1.2.0.0_new/build.sh
+--- SDL4Freepascal-1.2.0.0/build.sh 2001-07-16 04:54:26.000000000 +0400
++++ SDL4Freepascal-1.2.0.0_new/build.sh   2007-10-31 19:22:45.000000000 +0300
+@@ -1,2 +1,2 @@
+ #!/bin/sh
+-for i in *.pp; do ppc386 $i; done
+\ �. кон�.е �.айла не�. новой с�.�.оки
++for i in *.pp; do fpc $i; done
+\ �. кон�.е �.айла не�. новой с�.�.оки
+diff -urN SDL4Freepascal-1.2.0.0/sdl_audio.pp SDL4Freepascal-1.2.0.0_new/sdl_audio.pp
+--- SDL4Freepascal-1.2.0.0/sdl_audio.pp   2001-07-16 04:54:26.000000000 +0400
++++ SDL4Freepascal-1.2.0.0_new/sdl_audio.pp  2007-10-31 19:20:14.000000000 +0300
+@@ -13,7 +13,7 @@
+     uses SDL_types,SDL__rwops;
+   { C default packing is dword }
+ 
+-{$PACKRECORDS 4}
++{$PACKRECORDS C}
+ 
+  { Pointers to basic pascal types, inserted by h2pas conversion program.}
+   Type
+diff -urN SDL4Freepascal-1.2.0.0/sdl_cdrom.pp SDL4Freepascal-1.2.0.0_new/sdl_cdrom.pp
+--- SDL4Freepascal-1.2.0.0/sdl_cdrom.pp   2001-07-16 04:54:26.000000000 +0400
++++ SDL4Freepascal-1.2.0.0_new/sdl_cdrom.pp  2007-10-31 19:20:26.000000000 +0300
+@@ -13,7 +13,7 @@
+ 
+   { C default packing is dword }
+ 
+-{$PACKRECORDS 4}
++{$PACKRECORDS C}
+ 
+  { Pointers to basic pascal types, inserted by h2pas conversion program.}
+   Type
+diff -urN SDL4Freepascal-1.2.0.0/sdl_events.pp SDL4Freepascal-1.2.0.0_new/sdl_events.pp
+--- SDL4Freepascal-1.2.0.0/sdl_events.pp  2001-07-16 04:54:26.000000000 +0400
++++ SDL4Freepascal-1.2.0.0_new/sdl_events.pp 2007-10-31 19:20:33.000000000 +0300
+@@ -13,7 +13,7 @@
+     uses SDL_types, SDL_syswm, SDL_keyboard;
+   { C default packing is dword }
+ 
+-{$PACKRECORDS 4}
++{$PACKRECORDS C}
+ 
+   {
+       SDL - Simple DirectMedia Layer
+diff -urN SDL4Freepascal-1.2.0.0/sdl_keyboard.pp SDL4Freepascal-1.2.0.0_new/sdl_keyboard.pp
+--- SDL4Freepascal-1.2.0.0/sdl_keyboard.pp   2001-07-16 04:54:26.000000000 +0400
++++ SDL4Freepascal-1.2.0.0_new/sdl_keyboard.pp  2007-10-31 19:20:37.000000000 +0300
+@@ -13,7 +13,7 @@
+     uses SDL_types;
+   { C default packing is dword }
+ 
+-{$PACKRECORDS 4}
++{$PACKRECORDS C}
+ 
+  { Pointers to basic pascal types, inserted by h2pas conversion program.}
+   Type
+diff -urN SDL4Freepascal-1.2.0.0/sdl_mouse.pp SDL4Freepascal-1.2.0.0_new/sdl_mouse.pp
+--- SDL4Freepascal-1.2.0.0/sdl_mouse.pp   2001-07-16 04:54:26.000000000 +0400
++++ SDL4Freepascal-1.2.0.0_new/sdl_mouse.pp  2007-10-31 19:20:42.000000000 +0300
+@@ -14,7 +14,7 @@
+ 
+   { C default packing is dword }
+ 
+-{$PACKRECORDS 4}
++{$PACKRECORDS C}
+ 
+  { Pointers to basic pascal types, inserted by h2pas conversion program.}
+   Type
+diff -urN SDL4Freepascal-1.2.0.0/sdl.pp SDL4Freepascal-1.2.0.0_new/sdl.pp
+--- SDL4Freepascal-1.2.0.0/sdl.pp   2001-07-16 04:54:26.000000000 +0400
++++ SDL4Freepascal-1.2.0.0_new/sdl.pp  2007-10-31 19:20:03.000000000 +0300
+@@ -14,7 +14,7 @@
+ 
+   { C default packing is dword }
+ 
+-{$PACKRECORDS 4}
++{$PACKRECORDS C}
+ 
+   {
+       SDL - Simple DirectMedia Layer
+diff -urN SDL4Freepascal-1.2.0.0/sdl__rwops.pp SDL4Freepascal-1.2.0.0_new/sdl__rwops.pp
+--- SDL4Freepascal-1.2.0.0/sdl__rwops.pp  2001-07-16 04:54:26.000000000 +0400
++++ SDL4Freepascal-1.2.0.0_new/sdl__rwops.pp 2007-10-31 19:20:09.000000000 +0300
+@@ -13,7 +13,7 @@
+     uses SDL_types, stdio;
+   { C default packing is dword }
+ 
+-{$PACKRECORDS 4}
++{$PACKRECORDS C}
+ 
+  { Pointers to basic pascal types, inserted by h2pas conversion program.}
+   Type
+diff -urN SDL4Freepascal-1.2.0.0/sdl_syswm.pp SDL4Freepascal-1.2.0.0_new/sdl_syswm.pp
+--- SDL4Freepascal-1.2.0.0/sdl_syswm.pp   2001-07-16 04:54:26.000000000 +0400
++++ SDL4Freepascal-1.2.0.0_new/sdl_syswm.pp  2007-10-31 19:20:46.000000000 +0300
+@@ -11,7 +11,7 @@
+ 
+   { C default packing is dword }
+ 
+-{$PACKRECORDS 4}
++{$PACKRECORDS C}
+ 
+   {
+       SDL - Simple DirectMedia Layer
+diff -urN SDL4Freepascal-1.2.0.0/sdl_timer.pp SDL4Freepascal-1.2.0.0_new/sdl_timer.pp
+--- SDL4Freepascal-1.2.0.0/sdl_timer.pp   2001-07-16 04:54:26.000000000 +0400
++++ SDL4Freepascal-1.2.0.0_new/sdl_timer.pp  2007-10-31 19:20:51.000000000 +0300
+@@ -14,7 +14,7 @@
+ 
+   { C default packing is dword }
+ 
+-{$PACKRECORDS 4}
++{$PACKRECORDS C}
+ 
+   {
+       SDL - Simple DirectMedia Layer
+diff -urN SDL4Freepascal-1.2.0.0/sdl_types.pp SDL4Freepascal-1.2.0.0_new/sdl_types.pp
+--- SDL4Freepascal-1.2.0.0/sdl_types.pp   2001-07-16 04:54:26.000000000 +0400
++++ SDL4Freepascal-1.2.0.0_new/sdl_types.pp  2007-10-31 19:20:55.000000000 +0300
+@@ -12,7 +12,7 @@
+ 
+   { C default packing is dword }
+ 
+-{$PACKRECORDS 4}
++{$PACKRECORDS C}
+   {
+       SDL - Simple DirectMedia Layer
+       Copyright (C) 1997, 1998, 1999, 2000, 2001  Sam Lantinga
+diff -urN SDL4Freepascal-1.2.0.0/sdl_video.pp SDL4Freepascal-1.2.0.0_new/sdl_video.pp
+--- SDL4Freepascal-1.2.0.0/sdl_video.pp   2001-07-16 04:54:26.000000000 +0400
++++ SDL4Freepascal-1.2.0.0_new/sdl_video.pp  2007-10-31 19:20:59.000000000 +0300
+@@ -14,7 +14,7 @@
+ 
+   { C default packing is dword }
+ 
+-{$PACKRECORDS 4}
++{$PACKRECORDS C}
+ 
+  { Pointers to basic pascal types, inserted by h2pas conversion program.}
+   Type
+
