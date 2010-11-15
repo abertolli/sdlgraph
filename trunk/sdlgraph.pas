@@ -1,108 +1,298 @@
 {
-   SDLgraph - GRAPH unit implentation using SDL
-   Copyright (C) 2005 Angelo Bertolli
-   
-   This library is free software; you can redistribute it and/or
-   modify it under the terms of the GNU Library General Public
-   License as published by the Free Software Foundation; either
-   version 2 of the License, or (at your option) any later version.
+SDLGraph Unit
+Copyright (C) 2010 Angelo Bertolli
 
-   This library is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-   Library General Public License for more details.
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
 
-   You should have received a copy of the GNU Library General Public
-   License along with this library; if not, write to the Free
-   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-  
-   Angelo Bertolli
-   angelo.bertolli@gmail.com
-   http://sdlgraph.sourceforge.net/
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 }
 
-{
-   This unit requires SDL4Freepascal which in turn requires the SDL
-   run-time libraries.
-   SDL4Freepascal: http://sdl4fp.sourceforge.net/
-   SDL: http://www.libsdl.org/
-}
-
-Unit sdlgraph;
+Unit SDLGraph;
 
 INTERFACE
 
-Uses SDL, SDL_Video, crt;
+uses sdl, sdl_ttf;
 
-{ Public things and function prototypes }
+const
+	{unit version}
+	version		= '0.1';
 
+	{16 color definitions}
+	black		= 0;
+	blue		= 1;
+	green		= 2;
+	cyan		= 3;
+	red		= 4;
+	magenta		= 5;
+	brown		= 6;
+	lightgray	= 7;
+	darkgray	= 8;
+	lightblue	= 9;
+	lightgreen	= 10;
+	lightcyan	= 11;
+	lightred	= 12;
+	lightmagenta	= 13;
+	yellow		= 14;
+	white		= 15;
 
-Const
+	maxcolors	= 16;
 
-   SDLgraph_version = '0.1';
+	{fill patterns}
+	emptyfill	= 0;
+	solidfill	= 1;
+	linefill	= 2;
+	ltslashfill	= 3;
+	slashfill	= 4;
+	bkslashfill	= 5;
+	ltbkslashfill	= 6;
+	hatchfill	= 7;
+	xhatchfill	= 8;
+	interleavefill	= 9;
+	widedotfill	= 10;
+	closedotfill	= 11;
+	userfill	= 12;
 
+	{used for graphics text}
+	default		= 0;
+	triplex		= 1;
+	small		= 2;
+	sanseri		= 3;
+	gothic		= 4;
+	horizontal	= 0;
+	vertical	= 1;
 
-{ Constants for mode selection }
+type
+	PaletteType	= record
+		size	: word;
+		color	: array[0..maxcolors-1] of TSDL_Color;
+	end;
 
-   D1bit = 11;
-   D2bit = 12;
-   D4bit = 13;
-   D6bit = 14;  { 64 colors Half-brite mode - Amiga }
-   D8bit = 15;
-   D12bit = 16; { 4096 color modes HAM mode - Amiga }
-   D15bit = 17;
-   D16bit = 18;
-   D24bit = 19; { not yet supported }
-   D32bit = 20; { not yet supported }
-   D64bit = 21; { not yet supported }
-
-   lowNewDriver = 11;
-   highNewDriver = 21;
-
-   detectMode = 30000;
-   m320x200 = 30001;
-   m320x256 = 30002; { amiga resolution (PAL) }
-   m320x400 = 30003; { amiga/atari resolution }
-   m512x384 = 30004; { mac resolution }
-   m640x200 = 30005; { vga resolution }
-   m640x256 = 30006; { amiga resolution (PAL) }
-   m640x350 = 30007; { vga resolution }
-   m640x400 = 30008;
-   m640x480 = 30009;
-   m800x600 = 30010;
-   m832x624 = 30011; { mac resolution }
-   m1024x768 = 30012;
-   m1280x1024 = 30013;
-   m1600x1200 = 30014;
-   m2048x1536 = 30015;
-
-   lowNewMode = 30001;
-   highNewMode = 30015;
-
-Type
-   sdlgraph_t     =  record
-                        colordepth: byte;
-                        height: word;
-                        width: word;
-                     end;
-
-Var
-   sdlgraph_env   :  sdlgraph_t;
-
+procedure cleardevice;
+procedure outtextxy(x,y:integer;s:string);
+procedure setcolor(c:word);
+procedure settextstyle(face,direction,size:byte);
 
 IMPLEMENTATION
 
-{ Functions }
+var
+	graph_env	: record
+		screenw		: word;
+		screenh		: word;
+		depth		: byte;
+		color		: word;
+		bkcolor		: word;
+		cursorx		: word;
+		cursory		: word;
+		fontface	: byte;
+		fontdirection	: byte;
+		fontsize	: byte;
+		driverpath	: string;
+		palette		: palettetype;
+	end;
 
-Begin
+	screen		: PSDL_Surface;
 
-{ Initialization }
+{Include helper (non-interface) functions.}
+{$I sdlgraphx.pas}
+{--------------------------------------------------------------------------}
+procedure cleardevice;
+{Clears the graphical screen (with the current background color)}
+begin
+	with graph_env.palette.color[graph_env.bkcolor] do
+	begin
+		SDL_FillRect(screen,nil,SDL_MapRGB(SDL_GetVideoSurface^.format,r,g,b));
+		SDL_Flip(screen);
+	end;
+	with graph_env do
+	begin
+		cursorx:=0;
+		cursory:=0;
+	end;
+end;
+{--------------------------------------------------------------------------}
+function getcolor:word;
+begin
+	getcolor:=graph_env.color;
+end;
+{--------------------------------------------------------------------------}
+procedure setcolor(c:word);
+begin
+	graph_env.color:=c;
+end;
+{--------------------------------------------------------------------------}
+function getbkcolor:word;
+begin
+	getbkcolor:=graph_env.bkcolor;
+end;
+{--------------------------------------------------------------------------}
+procedure setbkcolor(c:word);
+begin
+	graph_env.bkcolor:=c;
+end;
+{--------------------------------------------------------------------------}
+function getmaxx:smallint;
+begin
+	getmaxx:=graph_env.screenw;
+end;
+{--------------------------------------------------------------------------}
+function getmaxy:smallint;
+begin
+	getmaxy:=graph_env.screenh;
+end;
+{--------------------------------------------------------------------------}
+procedure settextstyle(face,direction,size:byte);
+begin
+	with graph_env do
+	begin
+		fontface:=face;
+		fontdirection:=direction;
+		fontsize:=size;
+	end;
+end;
+{-------------------------------------------------------------------------}
+function getpixel(x,y:word):word;
+{Get pixel color}
 
-   width sdlgraph_env do
-      begin
-         colordepth:=0;
-         height:=0;
-         width:=0;
-      end;
+begin
+	getpixel:=0; {screen^.pixels^[y,x]; -- needs to be converted to pascal colors}
+end;
+{-------------------------------------------------------------------------}
+procedure putpixel(x,y,c:word);
+{Places a pixel of color on the screen}
 
-End.
+begin
+
+end;
+{-------------------------------------------------------------------------}
+procedure outtextxy(x,y:integer;s:string);
+var
+	font		: pointer;
+	fontcolor	: TSDL_Color;
+	sdltext		: PSDL_Surface;
+	dest		: PSDL_Rect;
+begin
+	fontcolor:=graph_env.palette.color[graph_env.color];
+	font:=TTF_OpenFont(getsdlfontface(),getsdlfontsize());
+	{render function wants a C-style string}
+	s:=s+#0;
+	sdltext:=TTF_RenderText_Solid(font,@s[1],fontcolor);
+	new(dest);
+	dest^.x:=x;
+	dest^.y:=y;
+	{
+	dest^.w:=0;
+	dest^.h:=0;
+	}
+	SDL_BlitSurface(sdltext,NIL,screen,dest);
+	SDL_Flip(screen);
+	TTF_CloseFont(font);
+end;
+{-------------------------------------------------------------------------}
+function textwidth(s:string):word;
+{Returns width of string in pixels.}
+var
+	loop	: integer;
+	font	: pointer;
+	size	: word;
+	adv,minx,maxx,miny,maxy:longint;
+begin
+	font:=TTF_OpenFont(getsdlfontface,getsdlfontsize);
+	size:=0;
+	adv:=0;
+	for loop:=1 to length(s) do
+	begin
+		TTF_GlyphMetrics(font,ord(s[loop]),minx,maxx,miny,maxy,adv);
+		size:=size + adv;
+	end;
+	textwidth:=size;
+end;
+{-------------------------------------------------------------------------}
+function textheight(s:string):word;
+{Returns width of a string in pixels.}
+
+var
+	loop	: integer;
+	font	: pointer;
+	size	: word;
+	adv,minx,maxx,miny,maxy:longint;
+
+begin
+	font:=TTF_OpenFont(getsdlfontface,getsdlfontsize);
+	size:=0;
+	for loop:=1 to length(s) do
+	begin
+		TTF_GlyphMetrics(font,ord(s[loop]),minx,maxx,miny,maxy,adv);
+		if (size < maxy) then size:=maxy;
+	end;
+	textheight:=size;
+end;
+{--------------------------------------------------------------------------}
+procedure initgraph(var driver,mode:smallint;const path:string);
+
+var
+	loop	: integer;
+
+begin
+	{Initialize all variables.  Right now we enforce one mode only.}
+	with graph_env do
+	begin
+		driverpath:=path;
+		screenw:=640;
+		screenh:=480;
+		depth:=4;
+		color:=white;
+		bkcolor:=black;
+		cursorx:=0;
+		cursory:=0;
+		fontface:=default;
+		fontdirection:=horizontal;
+		fontsize:=2;
+		{ Set up the colors for the 4-bit palette }
+		palette.size:=16;
+		for loop:=0 to palette.size-1 do
+		with palette.color[loop] do
+		        case loop of
+		        black           :begin r:=0;    g:=0;   b:=0;   end;
+		        blue            :begin r:=0;    g:=0;   b:=200; end;
+		        green           :begin r:=0;    g:=190; b:=0;   end;
+		        cyan            :begin r:=0;    g:=190; b:=190; end;
+		        red             :begin r:=200;  g:=0;   b:=0;   end;
+		        magenta         :begin r:=150;  g:=0;   b:=150; end;
+		        brown           :begin r:=190;  g:=80;  b:=64;  end;
+       			lightgray       :begin r:=190;  g:=190; b:=190; end;
+		        darkgray        :begin r:=90;   g:=90;  b:=90;  end;
+		        lightblue       :begin r:=90;   g:=90;  b:=255; end;
+		        lightgreen      :begin r:=0;    g:=255; b:=0;   end;
+		        lightcyan       :begin r:=0;    g:=255; b:=255; end;
+		        lightred        :begin r:=255;  g:=90;  b:=90;  end;
+		        lightmagenta    :begin r:=255;  g:=0;   b:=255; end;
+		        yellow          :begin r:=255;  g:=255; b:=0;   end;
+		        white           :begin r:=255;  g:=255; b:=255; end;
+		        end; {case}
+	end; {graph_env}
+
+	{ Use variables to start screen }
+	with graph_env do
+	begin
+		screen:=SDL_SetVideoMode(screenw,screenh,depth,SDL_HWPALETTE);
+		if (screen=nil) then
+		begin
+			{ do some kind of error handling or setting here}
+			halt();
+		end;
+	end;
+
+end;
+{--------------------------------------------------------------------------}
+begin {main}
+end.  {main}
